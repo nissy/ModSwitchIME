@@ -4,14 +4,6 @@ import os
 
 class LoggerTests: XCTestCase {
     
-    override func setUp() {
-        super.setUp()
-    }
-    
-    override func tearDown() {
-        super.tearDown()
-    }
-    
     // MARK: - Basic Logging Tests
     
     func testLoggerDebugMessage() {

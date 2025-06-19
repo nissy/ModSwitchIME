@@ -70,8 +70,8 @@ jobs:
     - name: Generate checksums
       run: |
         cd build
-        shasum -a 256 iemsw.dmg > iemsw.dmg.sha256
-        cat iemsw.dmg.sha256
+        shasum -a 256 ModSwitchIME.dmg > ModSwitchIME.dmg.sha256
+        cat ModSwitchIME.dmg.sha256
     
     - name: Generate release notes
       id: release_notes
@@ -97,17 +97,17 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: iemsw v${{ steps.get_version.outputs.VERSION }}
+        release_name: ModSwitchIME v${{ steps.get_version.outputs.VERSION }}
         body: |
-          ## iemsw v${{ steps.get_version.outputs.VERSION }}
+          ## ModSwitchIME v${{ steps.get_version.outputs.VERSION }}
           
           A macOS menu bar helper that switches between English input and native IME by pressing left/right ⌘ keys individually.
           
           ### Installation
           
-          1. Download `iemsw.dmg` from the assets below
-          2. Open the DMG file and drag iemsw.app to your Applications folder
-          3. Launch iemsw and grant accessibility permissions when prompted
+          1. Download `ModSwitchIME.dmg` from the assets below
+          2. Open the DMG file and drag ModSwitchIME.app to your Applications folder
+          3. Launch ModSwitchIME and grant accessibility permissions when prompted
           4. The app will appear in your menu bar
           
           ### Features
@@ -129,7 +129,7 @@ jobs:
           
           ### Verification
           
-          SHA256 checksum: See `iemsw.dmg.sha256` file in assets.
+          SHA256 checksum: See `ModSwitchIME.dmg.sha256` file in assets.
         draft: false
         prerelease: false
     
@@ -139,8 +139,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/iemsw.dmg
-        asset_name: iemsw.dmg
+        asset_path: ./build/ModSwitchIME.dmg
+        asset_name: ModSwitchIME.dmg
         asset_content_type: application/octet-stream
     
     - name: Upload checksum
@@ -149,8 +149,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/iemsw.dmg.sha256
-        asset_name: iemsw.dmg.sha256
+        asset_path: ./build/ModSwitchIME.dmg.sha256
+        asset_name: ModSwitchIME.dmg.sha256
         asset_content_type: text/plain
     
     - name: Cleanup keychain
@@ -172,14 +172,14 @@ jobs:
       id: get_info
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
-        DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/iemsw.dmg"
+        DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/ModSwitchIME.dmg"
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
     
     - name: Download and get SHA256
       run: |
-        curl -L "${{ steps.get_info.outputs.DOWNLOAD_URL }}" -o iemsw.dmg
-        SHA256=$(shasum -a 256 iemsw.dmg | cut -d' ' -f1)
+        curl -L "${{ steps.get_info.outputs.DOWNLOAD_URL }}" -o ModSwitchIME.dmg
+        SHA256=$(shasum -a 256 ModSwitchIME.dmg | cut -d' ' -f1)
         echo "SHA256=$SHA256" >> $GITHUB_ENV
     
     - name: Create Homebrew Cask PR
@@ -187,14 +187,14 @@ jobs:
       with:
         token: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
         push-to-fork: ${{ github.repository_owner }}/homebrew-cask
-        branch: update-iemsw-${{ steps.get_info.outputs.VERSION }}
-        title: 'iemsw: update to ${{ steps.get_info.outputs.VERSION }}'
+        branch: update-modswitchime-${{ steps.get_info.outputs.VERSION }}
+        title: 'ModSwitchIME: update to ${{ steps.get_info.outputs.VERSION }}'
         body: |
-          Update iemsw to version ${{ steps.get_info.outputs.VERSION }}
+          Update ModSwitchIME to version ${{ steps.get_info.outputs.VERSION }}
           
           - Version: ${{ steps.get_info.outputs.VERSION }}
           - Download URL: ${{ steps.get_info.outputs.DOWNLOAD_URL }}
           - SHA256: ${{ env.SHA256 }}
           
           Generated automatically by GitHub Actions.
-        commit-message: 'iemsw: update to ${{ steps.get_info.outputs.VERSION }}'
+        commit-message: 'ModSwitchIME: update to ${{ steps.get_info.outputs.VERSION }}'

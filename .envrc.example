@@ -1,0 +1,35 @@
+# ModSwitchIME Environment Configuration
+# Copy this file to .envrc and customize with your values
+
+# Development Team (from Apple Developer account)
+# Find your team ID via: security find-identity -v -p codesigning
+export DEVELOPMENT_TEAM="YOUR_TEAM_ID"
+
+# Bundle Identifiers
+export PRODUCT_BUNDLE_IDENTIFIER="com.example.ModSwitchIME"
+export TEST_BUNDLE_IDENTIFIER="com.example.ModSwitchIMETests"
+
+# Code Signing
+export CODE_SIGN_IDENTITY="Apple Development"
+export INSTALLER_IDENTITY="Developer ID Installer"
+
+# Project Info
+export PROJECT_NAME="ModSwitchIME"
+export COPYRIGHT_HOLDER="Your Name"
+export COPYRIGHT_YEAR="2024"
+export AUTHOR_NAME="ModSwitchIME Team"
+export GITHUB_URL="https://github.com/YourOrg/ModSwitchIME"
+
+# Build Configuration
+export XCODE_VERSION="15.4"
+export MACOS_DEPLOYMENT_TARGET="15.0"
+
+# Version (usually from git tags)
+export VERSION="1.0.0"
+export BUILD_NUMBER="1"
+
+# Optional: Set specific Xcode version
+# export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+
+# Optional: Set custom build directory
+# export BUILD_DIR="./build"

@@ -82,8 +82,12 @@ class KeyMonitorIntegrationTests: XCTestCase {
         
         // Then: Should return valid input source
         XCTAssertFalse(currentSource.isEmpty, "Should return non-empty current input source")
-        XCTAssertTrue(currentSource.contains("com.apple") || currentSource.contains("inputmethod") || currentSource.contains("keylayout"),
-                     "Should return valid input source identifier")
+        XCTAssertTrue(
+            currentSource.contains("com.apple") ||
+            currentSource.contains("inputmethod") ||
+            currentSource.contains("keylayout"),
+            "Should return valid input source identifier"
+        )
     }
     
     func testImeControllerToggleBehavior() {

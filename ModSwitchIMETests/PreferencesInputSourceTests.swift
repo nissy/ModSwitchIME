@@ -106,7 +106,7 @@ class PreferencesInputSourceTests: XCTestCase {
         }
         // IMEがインストールされていない可能性もあるため、警告のみ
         if !hasIME {
-            print("Warning: No IME found in available sources")
+            // Warning: No IME found in available sources
         }
         
         // getAvailableInputSourcesはABCキーボードレイアウトを除外する

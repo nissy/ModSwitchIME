@@ -3,14 +3,6 @@ import XCTest
 
 class InputSourceEdgeCaseTests: XCTestCase {
     
-    override func setUp() {
-        super.setUp()
-    }
-    
-    override func tearDown() {
-        super.tearDown()
-    }
-    
     // MARK: - Input Source Enumeration Edge Cases
     
     func testEmptyInputSourcesList() {
@@ -22,7 +14,10 @@ class InputSourceEdgeCaseTests: XCTestCase {
         
         // Then: Should handle empty lists gracefully
         XCTAssertTrue(allSources.isEmpty || !allSources.isEmpty, "Should handle empty input sources list")
-        XCTAssertTrue(availableSources.isEmpty || !availableSources.isEmpty, "Should handle empty available sources list")
+        XCTAssertTrue(
+            availableSources.isEmpty || !availableSources.isEmpty,
+            "Should handle empty available sources list"
+        )
     }
     
     func testDisabledInputSourcesHandling() {
@@ -36,11 +31,9 @@ class InputSourceEdgeCaseTests: XCTestCase {
                                    "All sources should include at least as many as enabled sources")
         
         // And: Should properly track enabled state
-        for source in allSources {
-            if !source.isEnabled {
-                XCTAssertFalse(enabledSources.contains { $0.sourceId == source.sourceId },
-                              "Disabled source should not appear in enabled-only list")
-            }
+        for source in allSources where !source.isEnabled {
+            XCTAssertFalse(enabledSources.contains { $0.sourceId == source.sourceId },
+                          "Disabled source should not appear in enabled-only list")
         }
     }
     

@@ -1,19 +1,18 @@
-# SwiftLint Configuration for iemsw
+# SwiftLint Configuration for ModSwitchIME
 
 # Included and excluded paths
 included:
-  - iemsw
-  - iemswTests
-  - iemswUITests
+  - ModSwitchIME
+  - ModSwitchIMETests
 
 excluded:
   - build
   - DerivedData
   - .build
   - Package.swift
-  - iemsw.xcodeproj
-  - iemsw/Assets.xcassets
-  - iemsw/Preview Content
+  - ModSwitchIME.xcodeproj
+  - ModSwitchIME/Assets.xcassets
+  - ModSwitchIME/Preview Content
 
 # Rules configuration
 disabled_rules:

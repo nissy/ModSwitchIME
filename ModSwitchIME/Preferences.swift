@@ -7,14 +7,14 @@ import CoreGraphics
 // MARK: - ModifierKey
 
 enum ModifierKey: String, CaseIterable, Codable {
-    case leftControl = "leftControl"
-    case leftShift = "leftShift"
-    case leftOption = "leftOption"
-    case leftCommand = "leftCommand"
-    case rightControl = "rightControl"
-    case rightShift = "rightShift"
-    case rightOption = "rightOption"
-    case rightCommand = "rightCommand"
+    case leftControl
+    case leftShift
+    case leftOption
+    case leftCommand
+    case rightControl
+    case rightShift
+    case rightOption
+    case rightCommand
     
     var displayName: String {
         switch self {
@@ -133,8 +133,6 @@ class Preferences: ObservableObject {
             saveModifierKeyEnabled()
         }
     }
-    
-    
     
     private init() {
         self.idleOffEnabled = UserDefaults.standard.object(forKey: "idleOffEnabled") as? Bool ?? false
@@ -317,13 +315,11 @@ class Preferences: ObservableObject {
         ]
         
         // Check if the ID contains any mode pattern
-        for pattern in modePatterns {
-            if id.contains(pattern) {
-                // Additional check: ensure it has a parent prefix (multiple dots)
-                let dotCount = id.filter { $0 == "." }.count
-                if dotCount >= 3 { // e.g., com.apple.inputmethod.Kotoeri.Japanese
-                    return true
-                }
+        for pattern in modePatterns where id.contains(pattern) {
+            // Additional check: ensure it has a parent prefix (multiple dots)
+            let dotCount = id.filter { $0 == "." }.count
+            if dotCount >= 3 { // e.g., com.apple.inputmethod.Kotoeri.Japanese
+                return true
             }
         }
         
@@ -407,7 +403,6 @@ class Preferences: ObservableObject {
               let inputSources = inputSourcesList as? [TISInputSource] else {
             return sources
         }
-        
         
         for inputSource in inputSources {
             // Get source ID
@@ -615,5 +610,4 @@ class Preferences: ObservableObject {
     func setKeyEnabled(_ enabled: Bool, for key: ModifierKey) {
         modifierKeyEnabled[key] = enabled
     }
-    
 }

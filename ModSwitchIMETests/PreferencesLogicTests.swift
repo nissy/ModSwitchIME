@@ -69,7 +69,11 @@ class PreferencesLogicTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: "idleOffEnabled"), "Should persist idleOffEnabled")
         XCTAssertEqual(UserDefaults.standard.double(forKey: "idleTimeout"), 45.0, "Should persist idleTimeout")
         XCTAssertTrue(UserDefaults.standard.bool(forKey: "launchAtLogin"), "Should persist launchAtLogin")
-        XCTAssertEqual(UserDefaults.standard.string(forKey: "motherImeId"), "com.test.ime", "Should persist motherImeId")
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: "motherImeId"),
+            "com.test.ime",
+            "Should persist motherImeId"
+        )
         
         // Cleanup - restore original values
         Preferences.shared.idleOffEnabled = originalIdleOffEnabled

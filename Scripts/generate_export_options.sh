@@ -1,3 +1,7 @@
+#!/bin/bash
+# Generate ExportOptions.plist from environment variables
+
+cat > ExportOptions.plist << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -5,7 +9,7 @@
 	<key>method</key>
 	<string>mac-application</string>
 	<key>teamID</key>
-	<string>R7LKF73J2W</string>
+	<string>${DEVELOPMENT_TEAM}</string>
 	<key>uploadBitcode</key>
 	<false/>
 	<key>uploadSymbols</key>
@@ -22,3 +26,6 @@
 	<string>&lt;none&gt;</string>
 </dict>
 </plist>
+EOF
+
+echo "ExportOptions.plist generated with DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}"

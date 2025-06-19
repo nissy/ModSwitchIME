@@ -3,14 +3,6 @@ import XCTest
 
 class ErrorHandlingTests: XCTestCase {
     
-    override func setUp() {
-        super.setUp()
-    }
-    
-    override func tearDown() {
-        super.tearDown()
-    }
-    
     // MARK: - ModSwitchIMEError Tests
     
     func testAccessibilityPermissionDeniedError() {
@@ -46,7 +38,11 @@ class ErrorHandlingTests: XCTestCase {
     
     func testLaunchAtLoginFailedError() {
         // Given: Launch at login failed error with underlying error
-        let underlyingError = NSError(domain: "TestDomain", code: 123, userInfo: [NSLocalizedDescriptionKey: "Test error"])
+        let underlyingError = NSError(
+            domain: "TestDomain",
+            code: 123,
+            userInfo: [NSLocalizedDescriptionKey: "Test error"]
+        )
         let error = ModSwitchIMEError.launchAtLoginFailed(underlyingError)
         
         // When: Getting error description and recovery suggestion
@@ -93,7 +89,11 @@ class ErrorHandlingTests: XCTestCase {
     
     func testSystemError() {
         // Given: System error with underlying error
-        let underlyingError = NSError(domain: "SystemDomain", code: 456, userInfo: [NSLocalizedDescriptionKey: "System failure"])
+        let underlyingError = NSError(
+            domain: "SystemDomain",
+            code: 456,
+            userInfo: [NSLocalizedDescriptionKey: "System failure"]
+        )
         let error = ModSwitchIMEError.systemError(underlyingError)
         
         // When: Getting error description and recovery suggestion
@@ -191,8 +191,15 @@ class ErrorHandlingTests: XCTestCase {
         
         // Then: Should handle empty lists gracefully
         XCTAssertTrue(allSources.isEmpty || !allSources.isEmpty, "Should handle potentially empty sources list")
-        XCTAssertTrue(enabledSources.isEmpty || !enabledSources.isEmpty, "Should handle potentially empty enabled sources list")
-        XCTAssertLessThanOrEqual(enabledSources.count, allSources.count, "Enabled sources should not exceed all sources")
+        XCTAssertTrue(
+            enabledSources.isEmpty || !enabledSources.isEmpty,
+            "Should handle potentially empty enabled sources list"
+        )
+        XCTAssertLessThanOrEqual(
+            enabledSources.count,
+            allSources.count,
+            "Enabled sources should not exceed all sources"
+        )
     }
     
     func testHandleCorruptedInputSourceData() {

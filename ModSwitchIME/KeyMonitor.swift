@@ -254,7 +254,10 @@ class KeyMonitor {
             }
             .store(in: &cancellables)
         
-        Logger.debug("idleOffEnabled subscription created, cancellables count: \(cancellables.count)", category: .keyboard)
+        Logger.debug(
+            "idleOffEnabled subscription created, cancellables count: \(cancellables.count)",
+            category: .keyboard
+        )
         
         // idleTimeoutの変更も監視（タイマーが有効な場合は再起動が必要）
         preferences.$idleTimeout

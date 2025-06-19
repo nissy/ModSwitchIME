@@ -25,7 +25,6 @@ struct PreferencesView: View {
                             .frame(width: 150)
                         }
                         
-                        
                         // Return IME selection (only enabled when multiple keys are configured)
                         HStack {
                             Text("Return to:")
@@ -66,7 +65,10 @@ struct PreferencesView: View {
                     Text("Modifier Key Detection")
                         .font(.headline)
                     
-                    Toggle("Wait before switching (prevent accidental triggers)", isOn: $preferences.cmdKeyTimeoutEnabled)
+                    Toggle(
+                        "Wait before switching (prevent accidental triggers)",
+                        isOn: $preferences.cmdKeyTimeoutEnabled
+                    )
                     
                     if preferences.cmdKeyTimeoutEnabled {
                         HStack {
@@ -101,11 +103,10 @@ struct PreferencesView: View {
                     ForEach(ModifierKey.allCases, id: \.self) { key in
                         ModifierKeyRow(
                             modifierKey: key,
-                            selectedIME: preferences.modifierKeyMappings[key],
-                            onSelect: {
-                                selectedModifierKey = key
-                            }
-                        )
+                            selectedIME: preferences.modifierKeyMappings[key]
+                        ) {
+                            selectedModifierKey = key
+                        }
                     }
                 }
                 
@@ -144,7 +145,6 @@ struct PreferencesView: View {
             )
         }
     }
-    
     
     private func getIMEDisplayName(_ imeId: String) -> String {
         // Get all available input sources
@@ -277,9 +277,8 @@ struct ModifierKeyInputSourcePicker: View {
                         ForEach(groupedInputSources.keys.sorted(), id: \.self) { language in
                             LanguageRowView(
                                 language: language,
-                                count: groupedInputSources[language]?.count ?? 0,
-                                action: { selectedLanguage = language }
-                            )
+                                count: groupedInputSources[language]?.count ?? 0
+                            ) { selectedLanguage = language }
                             
                             let sortedKeys = groupedInputSources.keys.sorted()
                             if language != sortedKeys.last {
@@ -326,12 +325,11 @@ struct ModifierKeyInputSourcePicker: View {
                                 ForEach(sources) { source in
                                     InputSourceRowView(
                                         source: source,
-                                        isSelected: source.sourceId == selectedSourceId,
-                                        action: {
-                                            selectedSourceId = source.sourceId
-                                            isPresented = false
-                                        }
-                                    )
+                                        isSelected: source.sourceId == selectedSourceId
+                                    ) {
+                                        selectedSourceId = source.sourceId
+                                        isPresented = false
+                                    }
                                     
                                     if source.id != sources.last?.id {
                                         Divider()
@@ -549,9 +547,8 @@ struct IdleIMEPicker: View {
                         ForEach(groupedInputSources.keys.sorted(), id: \.self) { language in
                             LanguageRowView(
                                 language: language,
-                                count: groupedInputSources[language]?.count ?? 0,
-                                action: { selectedLanguage = language }
-                            )
+                                count: groupedInputSources[language]?.count ?? 0
+                            ) { selectedLanguage = language }
                             
                             let sortedKeys = groupedInputSources.keys.sorted()
                             if language != sortedKeys.last {
@@ -598,12 +595,11 @@ struct IdleIMEPicker: View {
                                 ForEach(sources) { source in
                                     InputSourceRowView(
                                         source: source,
-                                        isSelected: source.sourceId == selectedSourceId,
-                                        action: {
-                                            selectedSourceId = source.sourceId
-                                            isPresented = false
-                                        }
-                                    )
+                                        isSelected: source.sourceId == selectedSourceId
+                                    ) {
+                                        selectedSourceId = source.sourceId
+                                        isPresented = false
+                                    }
                                     
                                     if source.id != sources.last?.id {
                                         Divider()

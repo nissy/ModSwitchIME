@@ -217,12 +217,12 @@ class MemoryLeakTests: XCTestCase {
         // Given: Potential reference cycle
         class Parent {
             var child: Child?
-            deinit { print("Parent deallocated") }
+            deinit { /* Parent deallocated */ }
         }
         
         class Child {
             weak var parent: Parent?  // Weak to avoid cycle
-            deinit { print("Child deallocated") }
+            deinit { /* Child deallocated */ }
         }
         
         autoreleasepool {
@@ -251,8 +251,11 @@ class MemoryLeakTests: XCTestCase {
             
             // Test unretained CF object access
             if let currentSource = TISCopyCurrentKeyboardInputSource() {
-                if let sourceId = TISGetInputSourceProperty(currentSource.takeRetainedValue(), kTISPropertyInputSourceID) {
-                    let _ = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue()
+                if let sourceId = TISGetInputSourceProperty(
+                    currentSource.takeRetainedValue(),
+                    kTISPropertyInputSourceID
+                ) {
+                    _ = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue()
                 }
             }
         }

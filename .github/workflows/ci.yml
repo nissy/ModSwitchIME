@@ -38,7 +38,7 @@ jobs:
       run: xcodebuild -version
     
     - name: Show available destinations
-      run: xcodebuild -project iemsw.xcodeproj -scheme iemsw -showdestinations
+      run: xcodebuild -project ModSwitchIME.xcodeproj -scheme ModSwitchIME -showdestinations
     
     - name: Build
       run: make build
@@ -78,8 +78,8 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: iemsw-archive
-        path: build/iemsw.xcarchive
+        name: ModSwitchIME-archive
+        path: build/ModSwitchIME.xcarchive
         retention-days: 30
 
   swift-package-manager:
@@ -127,21 +127,21 @@ jobs:
     - name: Validate project structure
       run: |
         echo "Checking required files..."
-        test -f iemsw.xcodeproj/project.pbxproj || (echo "❌ Xcode project file missing" && exit 1)
+        test -f ModSwitchIME.xcodeproj/project.pbxproj || (echo "❌ Xcode project file missing" && exit 1)
         test -f Package.swift || (echo "❌ Package.swift missing" && exit 1)
         test -f Makefile || (echo "❌ Makefile missing" && exit 1)
         test -f .swiftlint.yml || (echo "❌ SwiftLint config missing" && exit 1)
         
         echo "Checking source files..."
-        test -f iemsw/App.swift || (echo "❌ App.swift missing" && exit 1)
-        test -f iemsw/MenuBarApp.swift || (echo "❌ MenuBarApp.swift missing" && exit 1)
-        test -f iemsw/Preferences.swift || (echo "❌ Preferences.swift missing" && exit 1)
-        test -f iemsw/ImeController.swift || (echo "❌ ImeController.swift missing" && exit 1)
-        test -f iemsw/CustomIME.swift || (echo "❌ CustomIME.swift missing" && exit 1)
+        test -f ModSwitchIME/App.swift || (echo "❌ App.swift missing" && exit 1)
+        test -f ModSwitchIME/MenuBarApp.swift || (echo "❌ MenuBarApp.swift missing" && exit 1)
+        test -f ModSwitchIME/Preferences.swift || (echo "❌ Preferences.swift missing" && exit 1)
+        test -f ModSwitchIME/ImeController.swift || (echo "❌ ImeController.swift missing" && exit 1)
+        test -f ModSwitchIME/KeyMonitor.swift || (echo "❌ KeyMonitor.swift missing" && exit 1)
         
         echo "Checking test files..."
-        test -f iemswTests/ImeControllerTests.swift || (echo "❌ ImeControllerTests.swift missing" && exit 1)
-        test -f iemswTests/PreferencesTests.swift || (echo "❌ PreferencesTests.swift missing" && exit 1)
+        test -f ModSwitchIMETests/ImeControllerTests.swift || (echo "❌ ImeControllerTests.swift missing" && exit 1)
+        test -f ModSwitchIMETests/PreferencesLogicTests.swift || (echo "❌ PreferencesLogicTests.swift missing" && exit 1)
         
         echo "✅ All required files found"
     

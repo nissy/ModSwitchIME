@@ -148,7 +148,10 @@ class MenuBarAppTests: XCTestCase {
             // Verify error handling logic exists
             if let modSwitchIMEError = error as? ModSwitchIMEError {
                 XCTAssertNotNil(modSwitchIMEError.errorDescription, "ModSwitchIMEError should have description")
-                XCTAssertNotNil(modSwitchIMEError.recoverySuggestion, "ModSwitchIMEError should have recovery suggestion")
+                XCTAssertNotNil(
+                    modSwitchIMEError.recoverySuggestion,
+                    "ModSwitchIMEError should have recovery suggestion"
+                )
             }
         }
         
