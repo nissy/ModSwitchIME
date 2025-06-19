@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Carbon
+import Combine
 
 class KeyMonitor {
     private var eventTap: CFMachPort?
@@ -8,6 +9,7 @@ class KeyMonitor {
     private let imeController = ImeController()
     private let preferences = Preferences.shared
     private var isRunning = false
+    private var cancellables = Set<AnyCancellable>()
     
     // Track modifier key states
     private var modifierKeyStates: [ModifierKey: (isDown: Bool, downTime: CFAbsoluteTime)] = [:]
@@ -23,11 +25,23 @@ class KeyMonitor {
     private var idleTimer: Timer?
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     
+    // デバッグ用
+    var isIdleTimerRunning: Bool {
+        return idleTimer != nil
+    }
+    
+    // Public property to check if KeyMonitor is running
+    var isMonitoring: Bool {
+        return isRunning
+    }
+    
     func start() {
         // 既に実行中の場合はスキップ
         if isRunning {
             return
         }
+        
+        Logger.debug("KeyMonitor.start() called", category: .keyboard)
         
         // アクセシビリティ権限を確認
         let trusted = AXIsProcessTrusted()
@@ -65,6 +79,10 @@ class KeyMonitor {
         
         // アイドルタイマーを開始
         startIdleTimer()
+        
+        // Preferencesの変更を監視
+        Logger.debug("Setting up preference observation", category: .keyboard)
+        observePreferenceChanges()
     }
     
     func stop() {
@@ -81,6 +99,9 @@ class KeyMonitor {
         
         // アイドルタイマーを停止
         stopIdleTimer()
+        
+        // 監視をキャンセル
+        cancellables.removeAll()
         
         Logger.info("KeyMonitor stopped", category: .keyboard)
     }
@@ -211,6 +232,57 @@ class KeyMonitor {
             }
             // タイマーを再開するために最後のアクティビティ時間を更新
             lastActivityTime = currentTime
+        }
+    }
+    
+    // MARK: - Preference観察
+    
+    private func observePreferenceChanges() {
+        Logger.debug("observePreferenceChanges called", category: .keyboard)
+        
+        // Test: observe value immediately
+        let currentValue = preferences.idleOffEnabled
+        Logger.debug("Current idleOffEnabled value: \(currentValue)", category: .keyboard)
+        
+        // idleOffEnabledの変更を監視
+        preferences.$idleOffEnabled
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] enabled in
+                Logger.debug("idleOffEnabled changed to: \(enabled) (thread: \(Thread.current))", category: .keyboard)
+                self?.handleIdleEnabledChange(enabled)
+            }
+            .store(in: &cancellables)
+        
+        Logger.debug("idleOffEnabled subscription created, cancellables count: \(cancellables.count)", category: .keyboard)
+        
+        // idleTimeoutの変更も監視（タイマーが有効な場合は再起動が必要）
+        preferences.$idleTimeout
+            .removeDuplicates()
+            .sink { [weak self] timeout in
+                Logger.debug("idleTimeout changed to: \(timeout)", category: .keyboard)
+                guard let self = self else { return }
+                if self.preferences.idleOffEnabled && self.idleTimer != nil {
+                    // タイマーが動作中の場合は再起動
+                    self.stopIdleTimer()
+                    self.startIdleTimer()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleIdleEnabledChange(_ enabled: Bool) {
+        Logger.debug("handleIdleEnabledChange called with: \(enabled)", category: .keyboard)
+        if enabled {
+            // 有効になった場合、タイマーを開始
+            if idleTimer == nil {
+                Logger.debug("Starting idle timer", category: .keyboard)
+                startIdleTimer()
+            }
+        } else {
+            // 無効になった場合、タイマーを停止
+            Logger.debug("Stopping idle timer", category: .keyboard)
+            stopIdleTimer()
         }
     }
 }

@@ -197,6 +197,13 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Debug menu item (only in debug builds)
+        #if DEBUG
+        let debugItem = NSMenuItem(title: "Debug Info", action: #selector(showDebugInfo), keyEquivalent: "d")
+        debugItem.target = self
+        menu.addItem(debugItem)
+        #endif
+        
         let quitItem = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -375,6 +382,26 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         NSApplication.shared.terminate(nil)
     }
     
+    @objc private func showDebugInfo() {
+        let alert = NSAlert()
+        alert.messageText = "Debug Info"
+        
+        let idleEnabled = preferences.idleOffEnabled
+        let idleTimeout = preferences.idleTimeout
+        let timerRunning = keyMonitor?.isIdleTimerRunning ?? false
+        
+        alert.informativeText = """
+            Idle Auto Switch: \(idleEnabled ? "ON" : "OFF")
+            Idle Timeout: \(Int(idleTimeout)) seconds
+            Timer Running: \(timerRunning ? "YES" : "NO")
+            
+            KeyMonitor: \(keyMonitor != nil ? "Initialized" : "Not initialized")
+            """
+        
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+    
     // MARK: - NSApplicationDelegate
     
     func applicationWillTerminate(_ notification: Notification) {
@@ -393,6 +420,17 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
 
 extension MenuBarApp: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
+        let wasGranted = keyMonitor?.isMonitoring ?? false
+        let isGranted = AXIsProcessTrusted()
+        
+        // Check if permission was just granted
+        if !wasGranted && isGranted && keyMonitor != nil {
+            Logger.info("Accessibility permission detected via menu update - starting KeyMonitor")
+            keyMonitor?.start()
+            updateMenuState(enabled: true)
+            showPermissionGrantedNotification()
+        }
+        
         for item in menu.items {
             switch item.tag {
             case 100: // Grant Permissions

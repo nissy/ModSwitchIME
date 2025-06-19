@@ -8,17 +8,20 @@ struct Logger {
     private static let mainLogger = os.Logger(subsystem: subsystem, category: "main")
     private static let imeLogger = os.Logger(subsystem: subsystem, category: "ime")
     private static let keyLogger = os.Logger(subsystem: subsystem, category: "keyboard")
+    private static let preferencesLogger = os.Logger(subsystem: subsystem, category: "preferences")
     
     enum Category {
         case main
         case ime
         case keyboard
+        case preferences
         
         var logger: os.Logger {
             switch self {
             case .main: return mainLogger
             case .ime: return imeLogger
             case .keyboard: return keyLogger
+            case .preferences: return preferencesLogger
             }
         }
     }

@@ -32,7 +32,7 @@ YELLOW = \033[1;33m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: all clean build test lint archive package dmg install uninstall help setup-permissions
+.PHONY: all clean build test lint archive package dmg install uninstall help setup-permissions dev run
 
 # Default target
 all: clean build test
@@ -49,6 +49,9 @@ build: ## Build the project for debugging
 		-scheme $(SCHEME) \
 		-configuration $(CONFIGURATION_DEBUG) \
 		-destination $(DESTINATION) \
+		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
+		CODE_SIGN_IDENTITY="$(CODE_SIGN_IDENTITY)" \
+		CODE_SIGN_STYLE=Automatic \
 		build
 
 build-release: ## Build the project for release
@@ -69,6 +72,16 @@ build-unsigned: ## Build without code signing (for development)
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO \
+		build
+
+dev: ## Build for development with ad-hoc signing (keeps accessibility permissions)
+	@echo "$(BLUE)Building $(PROJECT_NAME) for development with ad-hoc signing...$(NC)"
+	xcodebuild -project $(XCODE_PROJECT) \
+		-scheme $(SCHEME) \
+		-configuration $(CONFIGURATION_DEBUG) \
+		-destination $(DESTINATION) \
+		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGN_STYLE=Automatic \
 		build
 
 # Test targets
@@ -255,6 +268,39 @@ uninstall: ## Uninstall the app from /Applications
 		echo "$(GREEN)$(PROJECT_NAME) uninstalled successfully$(NC)"; \
 	else \
 		echo "$(YELLOW)$(PROJECT_NAME) not found in /Applications$(NC)"; \
+	fi
+
+dev-install: dev ## Build with ad-hoc signing and install to /Applications
+	@echo "$(BLUE)Installing development build to /Applications...$(NC)"
+	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_DEBUG) -showBuildSettings | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
+	echo "$(YELLOW)Build path: $$BUILD_PATH$(NC)"; \
+	if [ -d "$$BUILD_PATH/$(PROJECT_NAME).app" ]; then \
+		echo "$(YELLOW)Stopping existing $(PROJECT_NAME) process...$(NC)"; \
+		pkill -x $(PROJECT_NAME) || true; \
+		echo "$(YELLOW)Removing old installation...$(NC)"; \
+		sudo rm -rf /Applications/$(PROJECT_NAME).app || true; \
+		sudo cp -R "$$BUILD_PATH/$(PROJECT_NAME).app" /Applications/; \
+		echo "$(GREEN)Development build installed successfully$(NC)"; \
+		echo "$(BLUE)Starting $(PROJECT_NAME)...$(NC)"; \
+		open /Applications/$(PROJECT_NAME).app; \
+	else \
+		echo "$(RED)App not found at: $$BUILD_PATH/$(PROJECT_NAME).app$(NC)"; \
+		echo "$(YELLOW)Looking for app in DerivedData...$(NC)"; \
+		APP_PATH=$$(find ~/Library/Developer/Xcode/DerivedData -name "$(PROJECT_NAME).app" -type d | grep -v "\.dSYM" | head -1); \
+		if [ -n "$$APP_PATH" ]; then \
+			echo "$(GREEN)Found app at: $$APP_PATH$(NC)"; \
+			echo "$(YELLOW)Stopping existing $(PROJECT_NAME) process...$(NC)"; \
+			pkill -x $(PROJECT_NAME) || true; \
+			echo "$(YELLOW)Removing old installation...$(NC)"; \
+			sudo rm -rf /Applications/$(PROJECT_NAME).app || true; \
+			sudo cp -R "$$APP_PATH" /Applications/; \
+			echo "$(GREEN)Development build installed successfully$(NC)"; \
+			echo "$(BLUE)Starting $(PROJECT_NAME)...$(NC)"; \
+			open /Applications/$(PROJECT_NAME).app; \
+		else \
+			echo "$(RED)Could not find $(PROJECT_NAME).app$(NC)"; \
+			exit 1; \
+		fi \
 	fi
 
 # Utility targets

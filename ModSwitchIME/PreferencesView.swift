@@ -25,6 +25,7 @@ struct PreferencesView: View {
                             .frame(width: 150)
                         }
                         
+                        
                         // Return IME selection (only enabled when multiple keys are configured)
                         HStack {
                             Text("Return to:")

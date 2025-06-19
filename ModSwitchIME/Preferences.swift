@@ -75,6 +75,7 @@ class Preferences: ObservableObject {
     
     @Published var idleOffEnabled: Bool {
         didSet {
+            Logger.debug("idleOffEnabled didSet called: \(idleOffEnabled)", category: .preferences)
             UserDefaults.standard.set(idleOffEnabled, forKey: "idleOffEnabled")
         }
     }
