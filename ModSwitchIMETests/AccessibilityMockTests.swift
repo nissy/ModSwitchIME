@@ -65,7 +65,7 @@ class TestableKeyMonitor {
 class TestableMenuBarApp {
     let accessibilityProvider: AccessibilityPermissionProviding
     let keyMonitor: TestableKeyMonitor
-    let preferences = Preferences()
+    let preferences = Preferences.createForTesting()
     
     var isAccessibilityEnabled: Bool {
         return accessibilityProvider.isProcessTrusted()

@@ -6,7 +6,7 @@ class PreferencesLogicTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        preferences = Preferences()
+        preferences = Preferences.createForTesting()
         
         // Store original values for cleanup
         UserDefaults.standard.set("test_running", forKey: "test_marker")
@@ -24,7 +24,7 @@ class PreferencesLogicTests: XCTestCase {
     func testDefaultCJKDetectionWithJapaneseLocale() {
         // Given: Simulated Japanese locale environment
         // When: Creating new preferences (which triggers CJK detection)
-        let testPreferences = Preferences()
+        let testPreferences = Preferences.createForTesting()
         
         // Then: Should detect Japanese input method
         XCTAssertTrue(testPreferences.motherImeId.contains("Kotoeri") || 
@@ -35,7 +35,7 @@ class PreferencesLogicTests: XCTestCase {
     func testDefaultCJKDetectionFallback() {
         // Given: No specific CJK input method preference
         // When: Default detection runs
-        let testPreferences = Preferences()
+        let testPreferences = Preferences.createForTesting()
         
         // Then: Should have some valid input method selected
         XCTAssertFalse(testPreferences.motherImeId.isEmpty, "Should have default input method")
@@ -54,7 +54,7 @@ class PreferencesLogicTests: XCTestCase {
         UserDefaults.standard.set("com.test.ime", forKey: "motherImeId")
         
         // When: Creating new Preferences instance
-        let testPreferences = Preferences()
+        let testPreferences = Preferences.createForTesting()
         
         // Then: Should load existing data
         XCTAssertTrue(testPreferences.idleOffEnabled, "Should load existing idleOffEnabled")
@@ -77,7 +77,7 @@ class PreferencesLogicTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "motherImeId")
         
         // When: Creating new Preferences instance
-        let testPreferences = Preferences()
+        let testPreferences = Preferences.createForTesting()
         
         // Then: Should use default values
         XCTAssertFalse(testPreferences.idleOffEnabled, "Default idleOffEnabled should be false")
@@ -209,7 +209,7 @@ class PreferencesLogicTests: XCTestCase {
         preferences.motherImeId = testImeId
         
         // When: Creating new Preferences instance
-        let newPreferences = Preferences()
+        let newPreferences = Preferences.createForTesting()
         
         // Then: Should load the same input source (unless it was changed by CJK detection)
         if UserDefaults.standard.object(forKey: "motherImeId") != nil {
@@ -297,7 +297,7 @@ class PreferencesLogicTests: XCTestCase {
         weak var weakPreferences: Preferences?
         
         autoreleasepool {
-            let tempPreferences = Preferences()
+            let tempPreferences = Preferences.createForTesting()
             weakPreferences = tempPreferences
             
             // Use the preferences

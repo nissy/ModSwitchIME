@@ -59,6 +59,20 @@ enum ModifierKey: String, CaseIterable, Codable {
 // MARK: - Preferences
 
 class Preferences: ObservableObject {
+    static let shared = Preferences()
+    
+    // For testing purposes only
+    internal static func createForTesting() -> Preferences {
+        // Clear test-related UserDefaults to ensure clean state
+        let keysToRemove = ["idleOffEnabled", "idleTimeout", "launchAtLogin", "motherImeId", 
+                           "cmdKeyTimeout", "cmdKeyTimeoutEnabled", "idleReturnIME"]
+        for key in keysToRemove {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        UserDefaults.standard.synchronize()
+        return Preferences()
+    }
+    
     @Published var idleOffEnabled: Bool {
         didSet {
             UserDefaults.standard.set(idleOffEnabled, forKey: "idleOffEnabled")
@@ -121,7 +135,7 @@ class Preferences: ObservableObject {
     
     
     
-    init() {
+    private init() {
         self.idleOffEnabled = UserDefaults.standard.object(forKey: "idleOffEnabled") as? Bool ?? false
         self.idleTimeout = UserDefaults.standard.object(forKey: "idleTimeout") as? Double ?? 5.0
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? false
@@ -284,15 +298,115 @@ class Preferences: ObservableObject {
     
     // MARK: - Input Source Selection UI Support
     
+    /// Check if an IME ID appears to be a child of a parent IME
+    private static func isChildIME(_ id: String) -> Bool {
+        // Common patterns for child IMEs across different input methods:
+        // 1. Contains a mode suffix after the main IME name
+        // 2. Has multiple dots in the identifier indicating hierarchy
+        
+        let modePatterns = [
+            // Japanese modes
+            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            // Chinese modes
+            ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
+            // Korean modes
+            ".Hangul", ".Hanja", ".2SetKorean", ".3SetKorean",
+            // Other common modes
+            ".ABC", ".QWERTY", ".Dvorak", ".Colemak"
+        ]
+        
+        // Check if the ID contains any mode pattern
+        for pattern in modePatterns {
+            if id.contains(pattern) {
+                // Additional check: ensure it has a parent prefix (multiple dots)
+                let dotCount = id.filter { $0 == "." }.count
+                if dotCount >= 3 { // e.g., com.apple.inputmethod.Kotoeri.Japanese
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Get the parent IME ID from a child IME ID
+    private static func getParentIMEId(_ childId: String) -> String? {
+        // Try to extract parent ID by removing the last component after the last dot
+        // that matches a known mode pattern
+        let modePatterns = [
+            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
+            ".Hangul", ".Hanja", ".2SetKorean", ".3SetKorean",
+            ".ABC", ".QWERTY", ".Dvorak", ".Colemak"
+        ]
+        
+        for pattern in modePatterns {
+            if let range = childId.range(of: pattern) {
+                return String(childId[..<range.lowerBound])
+            }
+        }
+        
+        return nil
+    }
+    
+    /// Get the list of actually enabled input sources from system preferences
+    private static func getSystemEnabledInputSourceIDs() -> Set<String> {
+        var enabledIDs = Set<String>()
+        
+        // Method 1: Check HIToolbox preferences for enabled input sources
+        let hiToolboxDefaults = UserDefaults(suiteName: "com.apple.HIToolbox")
+        if let appleEnabledInputSources = hiToolboxDefaults?.object(
+            forKey: "AppleEnabledInputSources"
+        ) as? [[String: Any]] {
+            Logger.debug("Found \(appleEnabledInputSources.count) sources in HIToolbox preferences", category: .ime)
+            for source in appleEnabledInputSources {
+                Logger.debug("HIToolbox source: \(source)", category: .ime)
+                if let bundleID = source["Bundle ID"] as? String {
+                    enabledIDs.insert(bundleID)
+                } else if let keyboardLayoutName = source["KeyboardLayout Name"] as? String {
+                    // Handle keyboard layouts like ABC
+                    if keyboardLayoutName == "ABC" {
+                        enabledIDs.insert("com.apple.keylayout.ABC")
+                    }
+                }
+            }
+        } else {
+            Logger.debug("No AppleEnabledInputSources found in HIToolbox preferences", category: .ime)
+        }
+        
+        // Method 2: Also check TISCreateInputSourceList with includeAllInstalled = false
+        // This gives us the actually active input sources
+        if let enabledList = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] {
+            Logger.debug("TISCreateInputSourceList(false) returned \(enabledList.count) sources", category: .ime)
+            for inputSource in enabledList {
+                if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
+                    let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                    enabledIDs.insert(id)
+                    
+                    // Also check if this source is actually enabled
+                    var isEnabled = false
+                    if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                        isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+                    }
+                    Logger.debug("TIS enabled list: \(id), enabled flag: \(isEnabled)", category: .ime)
+                }
+            }
+        }
+        
+        Logger.debug("Total system enabled input sources: \(enabledIDs.count) - \(enabledIDs)", category: .ime)
+        return enabledIDs
+    }
+    
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
         var sources: [InputSource] = []
         
-        // Always get all input sources, then filter by enabled state
-        // Note: TISCreateInputSourceList(nil, false) doesn't return all enabled IMEs
-        guard let inputSourcesList = TISCreateInputSourceList(nil, true)?.takeRetainedValue(),
+        // Choose source list based on includeDisabled flag
+        let includeAllInstalled = includeDisabled
+        guard let inputSourcesList = TISCreateInputSourceList(nil, includeAllInstalled)?.takeRetainedValue(),
               let inputSources = inputSourcesList as? [TISInputSource] else {
             return sources
         }
+        
         
         for inputSource in inputSources {
             // Get source ID
@@ -332,10 +446,12 @@ class Preferences: ObservableObject {
                 name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
             }
             
-            // Filter by enabled state if includeDisabled is false
-            if !includeDisabled && !isEnabled {
-                continue
-            }
+            // Debug log for all IMEs
+            Logger.debug("IME found: \(id), name: \(name), enabled: \(isEnabled), selectable: \(true)", category: .ime)
+            
+            // When includeDisabled is false, TISCreateInputSourceList(nil, false) 
+            // should already return only enabled sources.
+            // No additional filtering needed.
             
             sources.append(InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
         }

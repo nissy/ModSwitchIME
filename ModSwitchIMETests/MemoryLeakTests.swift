@@ -20,7 +20,7 @@ class MemoryLeakTests: XCTestCase {
     
     func testPreferencesNoMemoryLeak() {
         // Given: Preferences instance
-        var preferences: Preferences? = Preferences()
+        var preferences: Preferences? = Preferences.createForTesting()
         
         // When: Using preferences
         preferences?.idleTimeout = 10.0
@@ -34,7 +34,7 @@ class MemoryLeakTests: XCTestCase {
     
     func testPreferencesPublisherNoMemoryLeak() {
         // Given: Preferences with publisher subscriptions
-        var preferences: Preferences? = Preferences()
+        var preferences: Preferences? = Preferences.createForTesting()
         var cancellables = Set<AnyCancellable>()
         
         preferences?.$idleTimeout
@@ -317,7 +317,7 @@ class MemoryLeakTests: XCTestCase {
     func testPreferencesViewMemoryLeak() {
         // Given: View with ObservedObject
         class ViewContainer {
-            var preferences = Preferences()
+            var preferences = Preferences.createForTesting()
             var hostingController: NSViewController?
             
             func setupView() {
@@ -353,7 +353,7 @@ class MemoryLeakTests: XCTestCase {
                 var objects: [Preferences] = []
                 
                 for _ in 0..<1000 {
-                    let pref = Preferences()
+                    let pref = Preferences.createForTesting()
                     pref.idleTimeout = Double.random(in: 1...600)
                     objects.append(pref)
                 }

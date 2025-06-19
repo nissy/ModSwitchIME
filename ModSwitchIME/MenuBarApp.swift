@@ -11,7 +11,7 @@ extension NSNotification.Name {
 
 class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var statusBarItem: NSStatusItem?
-    let preferences = Preferences()
+    let preferences = Preferences.shared
     private var preferencesWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     

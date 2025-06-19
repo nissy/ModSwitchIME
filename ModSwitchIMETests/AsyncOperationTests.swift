@@ -8,7 +8,7 @@ class AsyncOperationTests: XCTestCase {
     override func setUp() {
         super.setUp()
         imeController = ImeController()
-        preferences = Preferences()
+        preferences = Preferences.createForTesting()
     }
     
     override func tearDown() {

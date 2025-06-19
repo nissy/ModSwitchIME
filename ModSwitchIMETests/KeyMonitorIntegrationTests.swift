@@ -10,7 +10,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
         super.setUp()
         keyMonitor = KeyMonitor()
         imeController = ImeController()
-        preferences = Preferences()
+        preferences = Preferences.createForTesting()
     }
     
     override func tearDown() {
@@ -128,7 +128,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
     
     func testPreferencesWithKeyMonitor() {
         // Given: Preferences instance
-        let testPrefs = Preferences()
+        let testPrefs = Preferences.createForTesting()
         
         // When: Modifying idle timeout settings
         testPrefs.idleOffEnabled = true
@@ -257,7 +257,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
             autoreleasepool {
                 let tempMonitor = KeyMonitor()
                 let tempController = ImeController()
-                let tempPreferences = Preferences()
+                let tempPreferences = Preferences.createForTesting()
                 
                 // Use components briefly
                 _ = tempController.getCurrentInputSource()
@@ -316,7 +316,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
         autoreleasepool {
             let monitor = KeyMonitor()
             let controller = ImeController()
-            let preferences = Preferences()
+            let preferences = Preferences.createForTesting()
             
             weakMonitor = monitor
             weakController = controller

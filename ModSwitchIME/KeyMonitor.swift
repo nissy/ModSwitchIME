@@ -6,7 +6,7 @@ class KeyMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private let imeController = ImeController()
-    private let preferences = Preferences()
+    private let preferences = Preferences.shared
     private var isRunning = false
     
     // Track modifier key states

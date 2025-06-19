@@ -7,7 +7,7 @@ class UIStateTransitionTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        preferences = Preferences()
+        preferences = Preferences.createForTesting()
     }
     
     override func tearDown() {
@@ -272,7 +272,7 @@ class UIStateTransitionTests: XCTestCase {
         preferences.motherImeId = "test.ime.id"
         
         // When: Creating new instance (simulating app restart)
-        let newPreferences = Preferences()
+        let newPreferences = Preferences.createForTesting()
         
         // Then: State should persist
         XCTAssertEqual(newPreferences.idleOffEnabled, preferences.idleOffEnabled)

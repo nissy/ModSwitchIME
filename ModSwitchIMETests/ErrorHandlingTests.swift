@@ -112,7 +112,7 @@ class ErrorHandlingTests: XCTestCase {
     
     func testPreferencesInvalidInputSourceHandling() {
         // Given: Preferences with invalid input source
-        let preferences = Preferences()
+        let preferences = Preferences.createForTesting()
         let invalidSourceId = "completely.invalid.source.that.does.not.exist"
         
         // When: Setting invalid input source
@@ -128,7 +128,7 @@ class ErrorHandlingTests: XCTestCase {
     
     func testInputSourceSelectionWithMissingSource() {
         // Given: Input source that exists in preferences but not in system
-        let preferences = Preferences()
+        let preferences = Preferences.createForTesting()
         let missingSourceId = "com.test.missing.inputmethod"
         preferences.motherImeId = missingSourceId
         
@@ -239,7 +239,7 @@ class ErrorHandlingTests: XCTestCase {
         UserDefaults.standard.set("not_a_number", forKey: "idleTimeout")
         
         // When: Creating preferences with corrupted data
-        let preferences = Preferences()
+        let preferences = Preferences.createForTesting()
         
         // Then: Should use default values when data is corrupted
         XCTAssertFalse(preferences.idleOffEnabled, "Should use default false for corrupted boolean")
@@ -256,11 +256,11 @@ class ErrorHandlingTests: XCTestCase {
         UserDefaults.standard.set(Double.nan, forKey: "idleTimeout")
         
         // When: Creating preferences with extreme values
-        let preferences1 = Preferences()
+        let preferences1 = Preferences.createForTesting()
         XCTAssertFalse(preferences1.idleTimeout.isInfinite, "Should handle infinity gracefully")
         
         UserDefaults.standard.set(Double.nan, forKey: "idleTimeout")
-        let preferences2 = Preferences()
+        let preferences2 = Preferences.createForTesting()
         XCTAssertFalse(preferences2.idleTimeout.isNaN, "Should handle NaN gracefully")
         
         // Cleanup
@@ -276,7 +276,7 @@ class ErrorHandlingTests: XCTestCase {
         // When: Creating many objects to stress memory
         for _ in 0..<1000 {
             autoreleasepool {
-                let preferences = Preferences()
+                let preferences = Preferences.createForTesting()
                 let imeController = ImeController()
                 
                 // Use objects briefly
@@ -326,7 +326,7 @@ class ErrorHandlingTests: XCTestCase {
         // When: Concurrent operations that might fail
         concurrentQueue.async {
             for _ in 0..<20 {
-                let preferences = Preferences()
+                let preferences = Preferences.createForTesting()
                 preferences.motherImeId = "invalid.source.\(Int.random(in: 0...999999))"
             }
             expectation.fulfill()
@@ -355,7 +355,7 @@ class ErrorHandlingTests: XCTestCase {
     
     func testErrorRecoveryScenarios() {
         // Given: Preferences in error state
-        let preferences = Preferences()
+        let preferences = Preferences.createForTesting()
         preferences.motherImeId = "invalid.source.id"
         
         // When: Attempting recovery by setting valid source
@@ -369,7 +369,7 @@ class ErrorHandlingTests: XCTestCase {
         
         // When: Attempting recovery by resetting to defaults
         preferences.motherImeId = ""
-        let newPreferences = Preferences()
+        let newPreferences = Preferences.createForTesting()
         
         // Then: Should use default CJK detection
         XCTAssertFalse(newPreferences.motherImeId.isEmpty, "Should recover with default CJK detection")

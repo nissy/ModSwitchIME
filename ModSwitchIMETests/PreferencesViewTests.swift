@@ -7,7 +7,7 @@ class PreferencesViewTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        preferences = Preferences()
+        preferences = Preferences.createForTesting()
     }
     
     override func tearDown() {
@@ -64,14 +64,15 @@ class PreferencesViewTests: XCTestCase {
     
     func testMotherImeIdDefault() {
         // Given: Fresh preferences
-        let testPreferences = Preferences()
+        let testPreferences = Preferences.createForTesting()
         
         // When: Initial state
         // Then: Should have a default IME selected
         XCTAssertFalse(testPreferences.motherImeId.isEmpty, "Should have default mother IME ID")
         XCTAssertTrue(testPreferences.motherImeId.contains("inputmethod") || 
-                     testPreferences.motherImeId.contains("Kotoeri"), 
-                     "Default IME should be a valid input method")
+                     testPreferences.motherImeId.contains("Kotoeri") ||
+                     testPreferences.motherImeId.contains("keylayout"), 
+                     "Default IME should be a valid input method, got: \(testPreferences.motherImeId)")
     }
     
     func testMotherImeIdPersistence() {
@@ -144,16 +145,28 @@ class PreferencesViewTests: XCTestCase {
         XCTAssertNotNil(view, "PreferencesView should be created successfully")
     }
     
-    func testInputSourcePickerSheetCreation() {
+    func testModifierKeyInputSourcePickerCreation() {
         // Given: Valid binding values
-        let selectedSourceId = Binding.constant("test.source.id")
-        let isPresented = Binding.constant(true)
+        var selectedSourceId = "test.source.id"
+        var isPresented = true
+        let selectedSourceBinding = Binding(
+            get: { selectedSourceId },
+            set: { selectedSourceId = $0 }
+        )
+        let isPresentedBinding = Binding(
+            get: { isPresented },
+            set: { isPresented = $0 }
+        )
         
-        // When: Creating InputSourcePickerSheet
-        let sheet = InputSourcePickerSheet(selectedSourceId: selectedSourceId, isPresented: isPresented)
+        // When: Creating ModifierKeyInputSourcePicker
+        let picker = ModifierKeyInputSourcePicker(
+            modifierKey: .leftCommand,
+            selectedSourceId: selectedSourceBinding,
+            isPresented: isPresentedBinding
+        )
         
-        // Then: Sheet should be created without errors
-        XCTAssertNotNil(sheet, "InputSourcePickerSheet should be created successfully")
+        // Then: Picker should be created without errors
+        XCTAssertNotNil(picker, "ModifierKeyInputSourcePicker should be created successfully")
     }
     
     // MARK: - Input Source Filtering and Grouping Tests

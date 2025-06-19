@@ -3,7 +3,7 @@ import Carbon
 import CoreGraphics
 
 class ImeController {
-    private let preferences = Preferences()
+    private let preferences = Preferences.shared
     
     private func switchToEnglish() {
         let englishSources = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"]
