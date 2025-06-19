@@ -133,7 +133,7 @@ Chinese IME example:
 
 ### Installation Steps
 
-1. Download the latest DMG from [Releases](https://github.com/your-username/ModSwitchIME/releases)
+1. Download the latest DMG from [Releases](https://github.com/nissy/ModSwitchIME/releases)
 2. Mount the DMG and drag ModSwitchIME.app to Applications folder
 3. Grant accessibility permission on first launch
 
