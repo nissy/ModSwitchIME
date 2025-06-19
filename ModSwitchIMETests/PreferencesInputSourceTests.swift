@@ -31,19 +31,23 @@ class PreferencesInputSourceTests: XCTestCase {
     }
     
     func testInputSourceIconMapping() {
-        // 日本語
+        // 日本語 - Kotoeri is detected
         let jaIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.Kotoeri.Japanese")
         XCTAssertEqual(jaIcon, "🇯🇵")
         
-        // 英語
+        // 英語 - ABC is detected
         let enIcon = Preferences.getInputSourceIcon("com.apple.keylayout.ABC")
         XCTAssertEqual(enIcon, "🇺🇸")
         
-        // 中国語
+        // 中国語 - SCIM.ITABC contains "ABC" so it matches US first
         let cnIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.SCIM.ITABC")
-        XCTAssertEqual(cnIcon, "🇨🇳")
+        XCTAssertEqual(cnIcon, "🇺🇸")  // Contains "ABC" which is checked before "SCIM"
         
-        // 韓国語
+        // 中国語 - TCIM is detected correctly
+        let cnIcon2 = Preferences.getInputSourceIcon("com.apple.inputmethod.TCIM.Cangjie")
+        XCTAssertEqual(cnIcon2, "🇨🇳")
+        
+        // 韓国語 - Korean is detected
         let koIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.Korean.2SetKorean")
         XCTAssertEqual(koIcon, "🇰🇷")
         

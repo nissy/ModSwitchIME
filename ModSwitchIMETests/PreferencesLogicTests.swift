@@ -47,26 +47,35 @@ class PreferencesLogicTests: XCTestCase {
     // MARK: - Preferences State Management Tests
     
     func testPreferencesInitializationWithExistingData() {
-        // Given: Existing preferences data
-        UserDefaults.standard.set(true, forKey: "idleOffEnabled")
-        UserDefaults.standard.set(45.0, forKey: "idleTimeout")
-        UserDefaults.standard.set(true, forKey: "launchAtLogin")
-        UserDefaults.standard.set("com.test.ime", forKey: "motherImeId")
+        // Given: Store original values
+        let originalIdleOffEnabled = Preferences.shared.idleOffEnabled
+        let originalIdleTimeout = Preferences.shared.idleTimeout
+        let originalLaunchAtLogin = Preferences.shared.launchAtLogin
+        let originalMotherImeId = Preferences.shared.motherImeId
         
-        // When: Creating new Preferences instance
-        let testPreferences = Preferences.createForTesting()
+        // When: Setting new values
+        Preferences.shared.idleOffEnabled = true
+        Preferences.shared.idleTimeout = 45.0
+        Preferences.shared.launchAtLogin = true
+        Preferences.shared.motherImeId = "com.test.ime"
         
-        // Then: Should load existing data
-        XCTAssertTrue(testPreferences.idleOffEnabled, "Should load existing idleOffEnabled")
-        XCTAssertEqual(testPreferences.idleTimeout, 45.0, "Should load existing idleTimeout")
-        XCTAssertTrue(testPreferences.launchAtLogin, "Should load existing launchAtLogin")
-        XCTAssertEqual(testPreferences.motherImeId, "com.test.ime", "Should load existing motherImeId")
+        // Then: Values should be set
+        XCTAssertTrue(Preferences.shared.idleOffEnabled, "Should set idleOffEnabled")
+        XCTAssertEqual(Preferences.shared.idleTimeout, 45.0, "Should set idleTimeout")
+        XCTAssertTrue(Preferences.shared.launchAtLogin, "Should set launchAtLogin")
+        XCTAssertEqual(Preferences.shared.motherImeId, "com.test.ime", "Should set motherImeId")
         
-        // Cleanup
-        UserDefaults.standard.removeObject(forKey: "idleOffEnabled")
-        UserDefaults.standard.removeObject(forKey: "idleTimeout")
-        UserDefaults.standard.removeObject(forKey: "launchAtLogin")
-        UserDefaults.standard.removeObject(forKey: "motherImeId")
+        // Verify persistence in UserDefaults
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "idleOffEnabled"), "Should persist idleOffEnabled")
+        XCTAssertEqual(UserDefaults.standard.double(forKey: "idleTimeout"), 45.0, "Should persist idleTimeout")
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "launchAtLogin"), "Should persist launchAtLogin")
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "motherImeId"), "com.test.ime", "Should persist motherImeId")
+        
+        // Cleanup - restore original values
+        Preferences.shared.idleOffEnabled = originalIdleOffEnabled
+        Preferences.shared.idleTimeout = originalIdleTimeout
+        Preferences.shared.launchAtLogin = originalLaunchAtLogin
+        Preferences.shared.motherImeId = originalMotherImeId
     }
     
     func testPreferencesDefaultValues() {

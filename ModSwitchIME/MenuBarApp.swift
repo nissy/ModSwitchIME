@@ -390,16 +390,42 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         let idleTimeout = preferences.idleTimeout
         let timerRunning = keyMonitor?.isIdleTimerRunning ?? false
         
+        // Get build timestamp
+        let buildTimestamp = getBuildTimestamp()
+        
         alert.informativeText = """
             Idle Auto Switch: \(idleEnabled ? "ON" : "OFF")
             Idle Timeout: \(Int(idleTimeout)) seconds
             Timer Running: \(timerRunning ? "YES" : "NO")
             
             KeyMonitor: \(keyMonitor != nil ? "Initialized" : "Not initialized")
+            
+            Build Time: \(buildTimestamp)
             """
         
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+    
+    private func getBuildTimestamp() -> String {
+        // Get the app bundle
+        guard let executableURL = Bundle.main.executableURL else {
+            return "Unknown"
+        }
+        
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: executableURL.path)
+            if let modificationDate = attributes[.modificationDate] as? Date {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                formatter.timeZone = TimeZone.current
+                return formatter.string(from: modificationDate)
+            }
+        } catch {
+            Logger.error("Failed to get build timestamp: \(error)")
+        }
+        
+        return "Unknown"
     }
     
     // MARK: - NSApplicationDelegate

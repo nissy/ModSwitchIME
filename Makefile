@@ -92,10 +92,13 @@ test: ## Run unit tests
 		xcodebuild test \
 			-project $(XCODE_PROJECT) \
 			-scheme $(SCHEME) \
-			-destination $(DESTINATION) | xcpretty || true; \
+			-destination $(DESTINATION) \
+			CODE_SIGN_IDENTITY="" \
+			CODE_SIGNING_REQUIRED=NO \
+			CODE_SIGNING_ALLOWED=NO \
+			2>&1 | { xcpretty || cat; }; \
 	else \
-		echo "$(YELLOW)Test target not found. Running validation tests...$(NC)"; \
-		swift run_tests.swift; \
+		echo "$(YELLOW)Test target not found.$(NC)"; \
 	fi
 
 test-ui: ## Run UI tests
@@ -110,6 +113,9 @@ test-unit: ## Run only unit tests
 	xcodebuild -project $(XCODE_PROJECT) \
 		-scheme $(SCHEME) \
 		-destination $(DESTINATION) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
 		test -only-testing:ModSwitchIMETests
 
 test-coverage: ## Generate test coverage report
@@ -118,6 +124,9 @@ test-coverage: ## Generate test coverage report
 		-scheme $(SCHEME) \
 		-destination $(DESTINATION) \
 		-enableCodeCoverage YES \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
 		test
 
 test-specific: ## Run specific test (usage: make test-specific TEST=PreferencesViewTests)
@@ -130,6 +139,9 @@ test-specific: ## Run specific test (usage: make test-specific TEST=PreferencesV
 		-project $(XCODE_PROJECT) \
 		-scheme $(SCHEME) \
 		-destination $(DESTINATION) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
 		-only-testing:ModSwitchIMETests/$(TEST)
 
 test-list: ## List all available tests
