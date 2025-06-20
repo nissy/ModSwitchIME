@@ -110,7 +110,7 @@ struct InputSourceManager {
         struct Cache {
             static var enabledSources: [Preferences.InputSource] = []
             static var allSources: [Preferences.InputSource] = []
-            static var lastCacheTime: Date = Date.distantPast
+            static var lastCacheTime: Date = .distantPast
         }
         
         let now = Date()
@@ -125,7 +125,10 @@ struct InputSourceManager {
                 Cache.allSources = fetchInputSources(includeDisabled: true)
                 Cache.lastCacheTime = now
                 
-                Logger.debug("Cache refreshed successfully. Enabled: \(Cache.enabledSources.count), All: \(Cache.allSources.count)", category: .ime)
+                Logger.debug(
+                    "Cache refreshed. Enabled: \(Cache.enabledSources.count), All: \(Cache.allSources.count)", 
+                    category: .ime
+                )
             } else {
                 Logger.warning("getAllInputSources called from background thread, using old cache", category: .ime)
             }
@@ -161,14 +164,9 @@ struct InputSourceManager {
                 
                 // Check if it's selectable
                 if let selectableRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
-                    do {
-                        let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
-                        if !CFBooleanGetValue(selectable) {
-                            Logger.debug("Skipping source \(id): not selectable", category: .ime)
-                            return
-                        }
-                    } catch {
-                        Logger.debug("Skipping source \(id): failed to check selectable", category: .ime)
+                    let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
+                    if !CFBooleanGetValue(selectable) {
+                        Logger.debug("Skipping source \(id): not selectable", category: .ime)
                         return
                     }
                 }
@@ -179,13 +177,7 @@ struct InputSourceManager {
                     return
                 }
                 
-                let category: String
-                do {
-                    category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
-                } catch {
-                    Logger.debug("Skipping source \(id): failed to get category", category: .ime)
-                    return
-                }
+                let category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
                 
                 // Only include keyboard input sources (not palette input sources)
                 guard category == (kTISCategoryKeyboardInputSource as String) else {
@@ -196,22 +188,13 @@ struct InputSourceManager {
                 // Get enabled state
                 var isEnabled = false
                 if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
-                    do {
-                        isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
-                    } catch {
-                        Logger.debug("Failed to get enabled state for \(id), assuming disabled", category: .ime)
-                        isEnabled = false
-                    }
+                    isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
                 }
                 
                 // Get localized name
                 var name = id
                 if let localizedNameRef = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
-                    do {
-                        name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
-                    } catch {
-                        Logger.debug("Failed to get localized name for \(id), using ID", category: .ime)
-                    }
+                    name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
                 }
                 
                 // Filter out disabled sources when includeDisabled is false

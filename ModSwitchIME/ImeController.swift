@@ -216,7 +216,10 @@ class ImeController: ErrorHandler {
             let newSource = self.getCurrentInputSource()
             
             if newSource != targetID {
-                Logger.warning("First switch attempt failed. Expected: \(targetID), Actual: \(newSource)", category: .ime)
+                Logger.warning(
+                    "First switch attempt failed. Expected: \(targetID), Actual: \(newSource)", 
+                    category: .ime
+                )
                 
                 // Immediate retry
                 TISSelectInputSource(source)

@@ -256,6 +256,16 @@ class Preferences: ObservableObject {
             return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese" // Default fallback
         }
         
+        // Try to find CJK input source from system
+        if let found = findFirstCJKInputSource(from: inputSources) {
+            return found
+        }
+        
+        // If no CJK input source found, try to detect by current locale
+        return getDefaultCJKInputSourceByLocale()
+    }
+    
+    private func findFirstCJKInputSource(from inputSources: [TISInputSource]) -> String? {
         // Priority list of CJK input methods
         let cjkPrefixes = [
             "com.apple.inputmethod.Kotoeri",     // Japanese
@@ -270,38 +280,35 @@ class Preferences: ObservableObject {
         
         // Process input sources within autoreleasepool to manage memory
         autoreleasepool {
-        // Find the first available CJK input source
-        for inputSource in inputSources {
-            guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
-                continue
-            }
-            
-            let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
-            
-            // Check if it's a CJK input method
-            for prefix in cjkPrefixes where id.hasPrefix(prefix) {
-                // Additional check: ensure it's selectable
-                if let selectableRef = TISGetInputSourceProperty(
-                    inputSource, 
-                    kTISPropertyInputSourceIsSelectCapable
-                ) {
-                    let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
-                    if CFBooleanGetValue(selectable) {
-                        foundInputSource = id
-                        break
+            for inputSource in inputSources {
+                guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
+                    continue
+                }
+                
+                let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                
+                // Check if it's a CJK input method
+                for prefix in cjkPrefixes where id.hasPrefix(prefix) {
+                    // Additional check: ensure it's selectable
+                    if let selectableRef = TISGetInputSourceProperty(
+                        inputSource, 
+                        kTISPropertyInputSourceIsSelectCapable
+                    ) {
+                        let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
+                        if CFBooleanGetValue(selectable) {
+                            foundInputSource = id
+                            break
+                        }
                     }
                 }
+                if foundInputSource != nil { break }
             }
-            if foundInputSource != nil { break }
-        }
         } // End autoreleasepool
         
-        // Return found input source if any
-        if let found = foundInputSource {
-            return found
-        }
-        
-        // If no CJK input source found, try to detect by current locale
+        return foundInputSource
+    }
+    
+    private func getDefaultCJKInputSourceByLocale() -> String {
         let currentLocale = Locale.current
         
         // Use macOS 13+ API (we're targeting macOS 15.0)
@@ -320,11 +327,9 @@ class Preferences: ObservableObject {
         case "ko":
             return "com.apple.inputmethod.Korean.2SetKorean"
         default:
-            break
+            // Final fallback
+            return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
         }
-        
-        // Final fallback
-        return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
