@@ -240,6 +240,17 @@ class Preferences: ObservableObject {
     }
     
     private func detectDefaultCJKInputSource() -> String {
+        // Ensure TIS API calls are on main thread
+        if Thread.isMainThread {
+            return detectDefaultCJKInputSourceSync()
+        } else {
+            return DispatchQueue.main.sync {
+                return detectDefaultCJKInputSourceSync()
+            }
+        }
+    }
+    
+    private func detectDefaultCJKInputSourceSync() -> String {
         // Get list of all input sources
         guard let inputSources = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] else {
             return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese" // Default fallback
@@ -255,6 +266,10 @@ class Preferences: ObservableObject {
             "com.apple.inputmethod.VietnameseIM"
         ]
         
+        var foundInputSource: String?
+        
+        // Process input sources within autoreleasepool to manage memory
+        autoreleasepool {
         // Find the first available CJK input source
         for inputSource in inputSources {
             guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
@@ -272,10 +287,18 @@ class Preferences: ObservableObject {
                 ) {
                     let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
                     if CFBooleanGetValue(selectable) {
-                        return id
+                        foundInputSource = id
+                        break
                     }
                 }
             }
+            if foundInputSource != nil { break }
+        }
+        } // End autoreleasepool
+        
+        // Return found input source if any
+        if let found = foundInputSource {
+            return found
         }
         
         // If no CJK input source found, try to detect by current locale
@@ -305,12 +328,25 @@ class Preferences: ObservableObject {
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
+        // Ensure TIS API calls are on main thread
+        if Thread.isMainThread {
+            return getAvailableInputSourcesSync()
+        } else {
+            return DispatchQueue.main.sync {
+                return getAvailableInputSourcesSync()
+            }
+        }
+    }
+    
+    private static func getAvailableInputSourcesSync() -> [(id: String, name: String)] {
         var sources: [(id: String, name: String)] = []
         
         guard let inputSources = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] else {
             return sources
         }
         
+        // Process input sources within autoreleasepool to manage memory
+        autoreleasepool {
         for inputSource in inputSources {
             // Get source ID
             guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
@@ -353,6 +389,7 @@ class Preferences: ObservableObject {
             let displayName = InputSourceHelper.getATOKDisplayName(id: id, defaultName: name)
             sources.append((id: id, name: displayName))
         }
+        } // End autoreleasepool
         
         return sources.sorted { $0.name < $1.name }
     }
@@ -360,6 +397,17 @@ class Preferences: ObservableObject {
     // MARK: - Input Source Selection UI Support
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
+        // Ensure TIS API calls are on main thread
+        if Thread.isMainThread {
+            return getAllInputSourcesSync(includeDisabled: includeDisabled)
+        } else {
+            return DispatchQueue.main.sync {
+                return getAllInputSourcesSync(includeDisabled: includeDisabled)
+            }
+        }
+    }
+    
+    private static func getAllInputSourcesSync(includeDisabled: Bool = false) -> [InputSource] {
         var sources: [InputSource] = []
         
         // Choose source list based on includeDisabled flag
@@ -368,6 +416,9 @@ class Preferences: ObservableObject {
               let inputSources = inputSourcesList as? [TISInputSource] else {
             return sources
         }
+        
+        // Process input sources within autoreleasepool to manage memory
+        autoreleasepool {
         
         for inputSource in inputSources {
             // Get source ID
@@ -414,6 +465,7 @@ class Preferences: ObservableObject {
             
             sources.append(InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
         }
+        } // End autoreleasepool
         
         return sources.sorted { $0.localizedName < $1.localizedName }
     }

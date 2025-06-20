@@ -54,51 +54,54 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func showAccessibilityAlert() {
-        // 重複表示を防ぐ
-        guard !isShowingPermissionAlert else {
-            Logger.debug("Permission alert already showing, skipping")
-            return
-        }
-        
-        // 短時間内の連続要求を防ぐ（10秒以内は無視）
-        let now = Date()
-        if now.timeIntervalSince(lastPermissionCheckTime) < 10 {
-            Logger.debug("Permission alert requested too recently, skipping")
-            return
-        }
-        
-        isShowingPermissionAlert = true
-        lastPermissionCheckTime = now
-        
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = """
-            ModSwitchIME needs permission to detect modifier key presses.
+        // Ensure alert is shown on main thread
+        DispatchQueue.main.async {
+            // 重複表示を防ぐ
+            guard !self.isShowingPermissionAlert else {
+                Logger.debug("Permission alert already showing, skipping")
+                return
+            }
             
-            ⚠️ Important Privacy Information:
-            • ONLY modifier keys (⌘, ⇧, ⌃, ⌥) are monitored
-            • NO text input or regular keystrokes are captured
-            • NO data is stored or transmitted
-            • All processing happens locally on your Mac
-            • You can revoke access anytime in System Settings
+            // 短時間内の連続要求を防ぐ（10秒以内は無視）
+            let now = Date()
+            if now.timeIntervalSince(self.lastPermissionCheckTime) < 10 {
+                Logger.debug("Permission alert requested too recently, skipping")
+                return
+            }
             
-            Please enable ModSwitchIME in:
-            System Settings → Privacy & Security → Accessibility
-            """
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
-        
-        NSApp.activate(ignoringOtherApps: true)
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Open system settings
-            AccessibilityManager.openSystemPreferences()
+            self.isShowingPermissionAlert = true
+            self.lastPermissionCheckTime = now
+            
+            let alert = NSAlert()
+            alert.messageText = "Accessibility Permission Required"
+            alert.informativeText = """
+                ModSwitchIME needs permission to detect modifier key presses.
+                
+                ⚠️ Important Privacy Information:
+                • ONLY modifier keys (⌘, ⇧, ⌃, ⌥) are monitored
+                • NO text input or regular keystrokes are captured
+                • NO data is stored or transmitted
+                • All processing happens locally on your Mac
+                • You can revoke access anytime in System Settings
+                
+                Please enable ModSwitchIME in:
+                System Settings → Privacy & Security → Accessibility
+                """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "Later")
+            
+            NSApp.activate(ignoringOtherApps: true)
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                // Open system settings
+                AccessibilityManager.openSystemPreferences()
+            }
+            
+            self.isShowingPermissionAlert = false
+            NSApp.setActivationPolicy(.accessory)
         }
-        
-        isShowingPermissionAlert = false
-        NSApp.setActivationPolicy(.accessory)
     }
     
     private func setupKeyMonitor() {
@@ -151,28 +154,31 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func updateMenuState(enabled: Bool) {
-        guard let menu = statusBarItem?.menu else { return }
-        
-        // Toggle enable/disable for permission-related menu items
-        for item in menu.items {
-            switch item.tag {
-            case 100: // Grant Permissions
-                // Gray out when permission is granted
-                item.isEnabled = !enabled
-                item.title = enabled ? "Accessibility Granted ✓" : "Permission Not Granted"
-            case 101: // Preferences
-                item.isEnabled = enabled
-            case 102: // Launch at Login
-                // Launch at Login is always enabled
-                break
-            default:
-                // Other menus like Quit are always enabled
-                break
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async {
+            guard let menu = self.statusBarItem?.menu else { return }
+            
+            // Toggle enable/disable for permission-related menu items
+            for item in menu.items {
+                switch item.tag {
+                case 100: // Grant Permissions
+                    // Gray out when permission is granted
+                    item.isEnabled = !enabled
+                    item.title = enabled ? "Accessibility Granted ✓" : "Permission Not Granted"
+                case 101: // Preferences
+                    item.isEnabled = enabled
+                case 102: // Launch at Login
+                    // Launch at Login is always enabled
+                    break
+                default:
+                    // Other menus like Quit are always enabled
+                    break
+                }
             }
+            
+            // Also change icon
+            self.statusBarItem?.button?.title = enabled ? "⌘" : "⌘?"
         }
-        
-        // Also change icon
-        statusBarItem?.button?.title = enabled ? "⌘" : "⌘?"
     }
     
     private func setupMenuBar() {
@@ -326,9 +332,12 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func updateLaunchAtLoginMenuItem() {
-        if let menu = statusBarItem?.menu {
-            for item in menu.items where item.action == #selector(toggleLaunchAtLogin) {
-                item.state = preferences.launchAtLogin ? .on : .off
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async {
+            if let menu = self.statusBarItem?.menu {
+                for item in menu.items where item.action == #selector(self.toggleLaunchAtLogin) {
+                    item.state = self.preferences.launchAtLogin ? .on : .off
+                }
             }
         }
     }

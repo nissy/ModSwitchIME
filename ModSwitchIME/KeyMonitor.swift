@@ -180,13 +180,9 @@ class KeyMonitor {
     }
     
     private func handleFlagsChanged(event: CGEvent) {
-        // Store event data in local variables for privacy
+        // Store event data in local variables for processing
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
-        
-        // Privacy: Clear event data immediately after reading
-        event.setIntegerValueField(.keyboardEventKeycode, value: 0)
-        event.flags = CGEventFlags(rawValue: 0)
         
         // Identify which modifier key based on keyCode
         guard let modifierKey = ModifierKey.from(keyCode: keyCode) else {

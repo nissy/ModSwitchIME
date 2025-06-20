@@ -9,31 +9,42 @@ class AccessibilityManager {
     private var cachedPermissionStatus: Bool?
     private let cacheValidityDuration: TimeInterval = 1.0
     
+    // Thread-safe access to cached data
+    private let cacheQueue = DispatchQueue(label: "com.modswitchime.accessibility.cache", attributes: .concurrent)
+    
     private init() {}
     
-    // Check accessibility permission with caching
+    // Check accessibility permission with caching (thread-safe)
     var hasPermission: Bool {
-        let now = Date()
-        
-        // Return cached value if still valid
-        if let cached = cachedPermissionStatus,
-           now.timeIntervalSince(lastCheckTime) < cacheValidityDuration {
-            return cached
+        return cacheQueue.sync {
+            let now = Date()
+            
+            // Return cached value if still valid
+            if let cached = cachedPermissionStatus,
+               now.timeIntervalSince(lastCheckTime) < cacheValidityDuration {
+                return cached
+            }
+            
+            // Check permission and cache result (must be done synchronously)
+            let status = AXIsProcessTrusted()
+            
+            // Update cache atomically
+            cacheQueue.async(flags: .barrier) {
+                self.cachedPermissionStatus = status
+                self.lastCheckTime = now
+            }
+            
+            Logger.debug("Accessibility permission checked: \(status)", category: .keyboard)
+            return status
         }
-        
-        // Check permission and cache result
-        let status = AXIsProcessTrusted()
-        cachedPermissionStatus = status
-        lastCheckTime = now
-        
-        Logger.debug("Accessibility permission checked: \(status)", category: .keyboard)
-        return status
     }
     
-    // Force refresh the cache
+    // Force refresh the cache (thread-safe)
     func refreshPermissionStatus() {
-        cachedPermissionStatus = nil
-        lastCheckTime = Date(timeIntervalSince1970: 0)
+        cacheQueue.async(flags: .barrier) {
+            self.cachedPermissionStatus = nil
+            self.lastCheckTime = Date(timeIntervalSince1970: 0)
+        }
     }
     
     // Request permission with options

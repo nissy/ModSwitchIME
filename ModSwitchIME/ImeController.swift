@@ -194,40 +194,44 @@ class ImeController: ErrorHandler {
                 TISDeselectInputSource(currentSource)
             }
             
-            // Small delay using nanosleep instead of Thread.sleep
-            var timespec = timespec(tv_sec: 0, tv_nsec: 10_000_000) // 10ms
-            nanosleep(&timespec, nil)
+            // Small delay without blocking main thread
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                // Continue with switch after delay
+                TISSelectInputSource(source)
+                self.verifyInputSourceSwitchAsync(targetID: targetID, source: source)
+            }
+            return
         }
         
         // Select the target input source
         TISSelectInputSource(source)
         
-        // Faster verification without async dispatch
-        verifyInputSourceSwitchSync(targetID: targetID, source: source)
+        // Verify the switch asynchronously
+        verifyInputSourceSwitchAsync(targetID: targetID, source: source)
     }
     
-    private func verifyInputSourceSwitchSync(targetID: String, source: TISInputSource) {
-        // Quick sync verification with minimal delay
-        var timespec = timespec(tv_sec: 0, tv_nsec: 20_000_000) // 20ms
-        nanosleep(&timespec, nil)
-        
-        let newSource = getCurrentInputSource()
-        
-        if newSource != targetID {
-            Logger.warning("First switch attempt failed. Expected: \(targetID), Actual: \(newSource)", category: .ime)
+    private func verifyInputSourceSwitchAsync(targetID: String, source: TISInputSource) {
+        // Non-blocking verification with appropriate delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            let newSource = self.getCurrentInputSource()
             
-            // Immediate retry
-            TISSelectInputSource(source)
-            
-            // Final verification after retry
-            nanosleep(&timespec, nil)
-            let finalSource = getCurrentInputSource()
-            
-            if finalSource != targetID {
-                Logger.error(
-                    "Failed to switch after retry. Expected: \(targetID), Actual: \(finalSource)", 
-                    category: .ime
-                )
+            if newSource != targetID {
+                Logger.warning("First switch attempt failed. Expected: \(targetID), Actual: \(newSource)", category: .ime)
+                
+                // Immediate retry
+                TISSelectInputSource(source)
+                
+                // Final verification after retry
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                    let finalSource = self.getCurrentInputSource()
+                    
+                    if finalSource != targetID {
+                        Logger.error(
+                            "Failed to switch after retry. Expected: \(targetID), Actual: \(finalSource)", 
+                            category: .ime
+                        )
+                    }
+                }
             }
         }
     }
@@ -242,6 +246,17 @@ class ImeController: ErrorHandler {
     }
     
     func getCurrentInputSource() -> String {
+        // Ensure TIS API calls are on main thread
+        if Thread.isMainThread {
+            return getCurrentInputSourceSync()
+        } else {
+            return DispatchQueue.main.sync {
+                return getCurrentInputSourceSync()
+            }
+        }
+    }
+    
+    private func getCurrentInputSourceSync() -> String {
         guard let currentSource = TISCopyCurrentKeyboardInputSource() else {
             return "Unknown"
         }
@@ -258,6 +273,17 @@ class ImeController: ErrorHandler {
     
     // Helper function to find a specific input source
     private func findInputSource(_ inputSourceID: String) -> TISInputSource? {
+        // Ensure TIS API calls are on main thread
+        if Thread.isMainThread {
+            return findInputSourceSync(inputSourceID)
+        } else {
+            return DispatchQueue.main.sync {
+                return findInputSourceSync(inputSourceID)
+            }
+        }
+    }
+    
+    private func findInputSourceSync(_ inputSourceID: String) -> TISInputSource? {
         guard let inputSources = TISCreateInputSourceList(nil, false)?
             .takeRetainedValue() as? [TISInputSource] else {
             return nil
