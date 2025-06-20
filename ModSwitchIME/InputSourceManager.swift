@@ -106,64 +106,128 @@ struct InputSourceManager {
     }
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [Preferences.InputSource] {
+        // Cache to avoid frequent expensive system calls
+        struct Cache {
+            static var enabledSources: [Preferences.InputSource] = []
+            static var allSources: [Preferences.InputSource] = []
+            static var lastCacheTime: Date = Date.distantPast
+        }
+        
+        let now = Date()
+        
+        // Refresh cache every 10 seconds or when includeDisabled changes
+        if now.timeIntervalSince(Cache.lastCacheTime) > 10.0 {
+            Logger.debug("Refreshing input sources cache", category: .ime)
+            
+            // Ensure TISCreateInputSourceList is called on main thread
+            if Thread.isMainThread {
+                Cache.enabledSources = fetchInputSources(includeDisabled: false)
+                Cache.allSources = fetchInputSources(includeDisabled: true)
+                Cache.lastCacheTime = now
+                
+                Logger.debug("Cache refreshed successfully. Enabled: \(Cache.enabledSources.count), All: \(Cache.allSources.count)", category: .ime)
+            } else {
+                Logger.warning("getAllInputSources called from background thread, using old cache", category: .ime)
+            }
+        }
+        
+        return includeDisabled ? Cache.allSources : Cache.enabledSources
+    }
+    
+    private static func fetchInputSources(includeDisabled: Bool) -> [Preferences.InputSource] {
         var sources: [Preferences.InputSource] = []
+        
+        Logger.debug("fetchInputSources called with includeDisabled: \(includeDisabled)", category: .ime)
         
         // Choose source list based on includeDisabled flag
         let includeAllInstalled = includeDisabled
         guard let inputSourcesList = TISCreateInputSourceList(nil, includeAllInstalled)?.takeRetainedValue(),
               let inputSources = inputSourcesList as? [TISInputSource] else {
+            Logger.warning("TISCreateInputSourceList returned nil or invalid list", category: .ime)
             return sources
         }
         
-        for inputSource in inputSources {
-            // Get source ID
-            guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
-                continue
-            }
-            let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
-            
-            // Check if it's selectable
-            if let selectableRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
-                let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
-                if !CFBooleanGetValue(selectable) {
-                    continue
+        Logger.debug("TISCreateInputSourceList returned \(inputSources.count) sources", category: .ime)
+        
+        for (index, inputSource) in inputSources.enumerated() {
+            autoreleasepool {
+                // Get source ID
+                guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
+                    Logger.debug("Skipping source \(index): no source ID", category: .ime)
+                    return
                 }
+                
+                let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                
+                // Check if it's selectable
+                if let selectableRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
+                    do {
+                        let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
+                        if !CFBooleanGetValue(selectable) {
+                            Logger.debug("Skipping source \(id): not selectable", category: .ime)
+                            return
+                        }
+                    } catch {
+                        Logger.debug("Skipping source \(id): failed to check selectable", category: .ime)
+                        return
+                    }
+                }
+                
+                // Get category
+                guard let categoryRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) else {
+                    Logger.debug("Skipping source \(id): no category", category: .ime)
+                    return
+                }
+                
+                let category: String
+                do {
+                    category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
+                } catch {
+                    Logger.debug("Skipping source \(id): failed to get category", category: .ime)
+                    return
+                }
+                
+                // Only include keyboard input sources (not palette input sources)
+                guard category == (kTISCategoryKeyboardInputSource as String) else {
+                    Logger.debug("Skipping source \(id): wrong category \(category)", category: .ime)
+                    return
+                }
+                
+                // Get enabled state
+                var isEnabled = false
+                if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                    do {
+                        isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+                    } catch {
+                        Logger.debug("Failed to get enabled state for \(id), assuming disabled", category: .ime)
+                        isEnabled = false
+                    }
+                }
+                
+                // Get localized name
+                var name = id
+                if let localizedNameRef = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
+                    do {
+                        name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
+                    } catch {
+                        Logger.debug("Failed to get localized name for \(id), using ID", category: .ime)
+                    }
+                }
+                
+                // Filter out disabled sources when includeDisabled is false
+                if !includeDisabled && !isEnabled {
+                    Logger.debug("Skipping disabled source: \(id)", category: .ime)
+                    return
+                }
+                
+                Logger.debug("Adding source: \(id), name: \(name), enabled: \(isEnabled)", category: .ime)
+                sources.append(Preferences.InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
             }
-            
-            // Get category
-            guard let categoryRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) else {
-                continue
-            }
-            let category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
-            
-            // Only include keyboard input sources (not palette input sources)
-            guard category == (kTISCategoryKeyboardInputSource as String) else {
-                continue
-            }
-            
-            // Get enabled state
-            var isEnabled = false
-            if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
-                isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
-            }
-            
-            // Get localized name
-            var name = id
-            if let localizedNameRef = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
-                name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
-            }
-            
-            // Debug log for all IMEs
-            Logger.debug("IME found: \(id), name: \(name), enabled: \(isEnabled), selectable: \(true)", category: .ime)
-            
-            // When includeDisabled is false, TISCreateInputSourceList(nil, false) 
-            // should already return only enabled sources.
-            // No additional filtering needed.
-            
-            sources.append(Preferences.InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
         }
         
-        return sources.sorted { $0.localizedName < $1.localizedName }
+        let sortedSources = sources.sorted { $0.localizedName < $1.localizedName }
+        Logger.debug("fetchInputSources returning \(sortedSources.count) sources", category: .ime)
+        return sortedSources
     }
     
     // MARK: - Language Detection

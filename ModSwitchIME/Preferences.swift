@@ -360,7 +360,62 @@ class Preferences: ObservableObject {
     // MARK: - Input Source Selection UI Support
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
-        return InputSourceManager.getAllInputSources(includeDisabled: includeDisabled)
+        var sources: [InputSource] = []
+        
+        // Choose source list based on includeDisabled flag
+        let includeAllInstalled = includeDisabled
+        guard let inputSourcesList = TISCreateInputSourceList(nil, includeAllInstalled)?.takeRetainedValue(),
+              let inputSources = inputSourcesList as? [TISInputSource] else {
+            return sources
+        }
+        
+        for inputSource in inputSources {
+            // Get source ID
+            guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
+                continue
+            }
+            let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+            
+            // Check if it's selectable
+            if let selectableRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
+                let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
+                if !CFBooleanGetValue(selectable) {
+                    continue
+                }
+            }
+            
+            // Get category
+            guard let categoryRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) else {
+                continue
+            }
+            let category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
+            
+            // Only include keyboard input sources (not palette input sources)
+            guard category == (kTISCategoryKeyboardInputSource as String) else {
+                continue
+            }
+            
+            // Get enabled state
+            var isEnabled = false
+            if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+            }
+            
+            // Filter out disabled sources when includeDisabled is false
+            if !includeDisabled && !isEnabled {
+                continue
+            }
+            
+            // Get localized name
+            var name = id
+            if let localizedNameRef = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
+                name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
+            }
+            
+            sources.append(InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
+        }
+        
+        return sources.sorted { $0.localizedName < $1.localizedName }
     }
     
     // Public static methods that delegate to InputSourceHelper

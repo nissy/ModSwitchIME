@@ -9,7 +9,10 @@ class PreferencesInputSourceTests: XCTestCase {
         // システムによっては利用可能な入力ソースが少ない場合もある
         if sources.isEmpty {
             // 警告を出すがテストは通す
-            print("Warning: No available input sources found. This might be expected in test environment.")
+            Logger.warning(
+                "No available input sources found. This might be expected in test environment.", 
+                category: .tests
+            )
         } else {
             // 各入力ソースにIDと名前があることを確認
             for source in sources {

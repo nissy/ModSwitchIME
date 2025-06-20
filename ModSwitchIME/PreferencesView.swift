@@ -213,9 +213,10 @@ struct PreferencesView: View {
     }
     
     private func getIMEDisplayName(_ imeId: String) -> String {
-        // Get all available input sources
-        let sources = Preferences.getAllInputSources()
-        if let source = sources.first(where: { $0.sourceId == imeId }) {
+        // Use Preferences.getAllInputSources (back to working implementation)
+        let cachedSources = Preferences.getAllInputSources(includeDisabled: false)
+        
+        if let source = cachedSources.first(where: { $0.sourceId == imeId }) {
             return source.localizedName
         }
         return imeId
@@ -262,9 +263,10 @@ struct ModifierKeyRow: View {
     }
     
     private func getIMEDisplayName(_ imeId: String) -> String {
-        // Get all available input sources
-        let sources = Preferences.getAllInputSources()
-        if let source = sources.first(where: { $0.sourceId == imeId }) {
+        // Use Preferences.getAllInputSources (back to working implementation)
+        let cachedSources = Preferences.getAllInputSources(includeDisabled: false)
+        
+        if let source = cachedSources.first(where: { $0.sourceId == imeId }) {
             return source.localizedName
         }
         return imeId
@@ -282,8 +284,10 @@ struct ModifierKeyInputSourcePicker: View {
     @State private var showDisabledSources = false
     
     private var groupedInputSources: [String: [Preferences.InputSource]] {
-        let allSources = Preferences.getAllInputSources(includeDisabled: showDisabledSources)
-        let filtered = searchText.isEmpty ? allSources : allSources.filter { 
+        // Use Preferences.getAllInputSources (back to working implementation)
+        let cachedSources = Preferences.getAllInputSources(includeDisabled: showDisabledSources)
+        
+        let filtered = searchText.isEmpty ? cachedSources : cachedSources.filter { 
             $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
             $0.sourceId.localizedCaseInsensitiveContains(searchText)
         }
@@ -554,8 +558,10 @@ struct IdleIMEPicker: View {
     @State private var showDisabledSources = false
     
     private var groupedInputSources: [String: [Preferences.InputSource]] {
-        let allSources = Preferences.getAllInputSources(includeDisabled: showDisabledSources)
-        let filtered = searchText.isEmpty ? allSources : allSources.filter { 
+        // Use Preferences.getAllInputSources (back to working implementation)
+        let cachedSources = Preferences.getAllInputSources(includeDisabled: showDisabledSources)
+        
+        let filtered = searchText.isEmpty ? cachedSources : cachedSources.filter { 
             $0.localizedName.localizedCaseInsensitiveContains(searchText) ||
             $0.sourceId.localizedCaseInsensitiveContains(searchText)
         }

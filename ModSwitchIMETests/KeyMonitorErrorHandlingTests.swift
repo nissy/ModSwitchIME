@@ -59,7 +59,10 @@ class KeyMonitorErrorHandlingTests: XCTestCase {
     func testErrorDescriptionsAreCorrect() {
         let tapCreationError = ModSwitchIMEError.eventTapCreationFailed(reason: "Test reason")
         XCTAssertEqual(tapCreationError.errorDescription, "Failed to create event tap: Test reason")
-        XCTAssertEqual(tapCreationError.recoverySuggestion, "Check accessibility permissions and try restarting the application.")
+        XCTAssertEqual(
+            tapCreationError.recoverySuggestion, 
+            "Check accessibility permissions and try restarting the application."
+        )
         
         let automaticDisableError = ModSwitchIMEError.eventTapDisabled(automatic: true)
         XCTAssertEqual(

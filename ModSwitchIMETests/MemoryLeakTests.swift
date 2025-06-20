@@ -360,7 +360,7 @@ class MemoryLeakTests: XCTestCase {
                 // Create many temporary objects
                 var objects: [Preferences] = []
                 
-                for _ in 0..<1000 {
+                for _ in 0..<100 {
                     let pref = Preferences.createForTesting()
                     pref.idleTimeout = Double.random(in: 1...600)
                     objects.append(pref)

@@ -37,17 +37,17 @@ class ImeController: ErrorHandler {
     }
     
     private func refreshInputSourceCache() {
-        cacheQueue.async(flags: .barrier) {
-            // Clear existing cache to free memory
-            self.inputSourceCache.removeAll(keepingCapacity: false)
-            
+        // All TIS functions must be called on main thread
+        DispatchQueue.main.async {
             guard let inputSources = TISCreateInputSourceList(nil, false)?
                 .takeRetainedValue() as? [TISInputSource] else {
                 return
             }
             
-            // Only cache actively used input sources to limit memory usage
+            // Process input sources on main thread
+            var cacheData: [String: TISInputSource] = [:]
             var addedCount = 0
+            
             for inputSource in inputSources {
                 // Stop if we've reached the cache limit
                 if addedCount >= self.maxCacheSize {
@@ -62,17 +62,25 @@ class ImeController: ErrorHandler {
                         let cfBoolean = Unmanaged<CFBoolean>.fromOpaque(enabled).takeUnretainedValue()
                         let isEnabled = CFBooleanGetValue(cfBoolean)
                         if isEnabled {
-                            self.inputSourceCache[id] = inputSource
+                            cacheData[id] = inputSource
                             addedCount += 1
                         }
                     }
                 }
             }
             
-            Logger.debug(
-                "Cache refreshed: \(self.inputSourceCache.count) sources (limit: \(self.maxCacheSize))", 
-                category: .ime
-            )
+            // Update cache on background thread
+            self.cacheQueue.async(flags: .barrier) {
+                // Clear existing cache to free memory
+                self.inputSourceCache.removeAll(keepingCapacity: false)
+                // Update with new data
+                self.inputSourceCache = cacheData
+                
+                Logger.debug(
+                    "Cache refreshed: \(self.inputSourceCache.count) sources (limit: \(self.maxCacheSize))", 
+                    category: .ime
+                )
+            }
         }
     }
     

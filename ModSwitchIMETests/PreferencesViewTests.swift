@@ -177,7 +177,7 @@ class PreferencesViewTests: XCTestCase {
         
         // Skip test if no sources available (test environment may have limited sources)
         guard !allSources.isEmpty else {
-            print("Warning: No input sources available for grouping test")
+            Logger.warning("No input sources available for grouping test", category: .tests)
             return
         }
         
