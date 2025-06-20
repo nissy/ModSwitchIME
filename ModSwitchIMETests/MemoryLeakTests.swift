@@ -8,9 +8,11 @@ class MemoryLeakTests: XCTestCase {
     
     // MARK: - Helper Methods
     
-    private func assertNoMemoryLeak<T: AnyObject>(_ instance: T,
-                                                  file: StaticString = #file,
-                                                  line: UInt = #line) {
+    private func assertNoMemoryLeak<T: AnyObject>(
+        _ instance: T,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
         addTeardownBlock { [weak instance] in
             XCTAssertNil(instance, "Instance should be deallocated, potential memory leak", file: file, line: line)
         }

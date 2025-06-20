@@ -27,13 +27,18 @@ class InputSourceEdgeCaseTests: XCTestCase {
         
         // When: Comparing enabled vs all sources
         // Then: All sources count should be >= enabled sources count
-        XCTAssertGreaterThanOrEqual(allSources.count, enabledSources.count, 
-                                   "All sources should include at least as many as enabled sources")
+        XCTAssertGreaterThanOrEqual(
+            allSources.count,
+            enabledSources.count,
+            "All sources should include at least as many as enabled sources"
+        )
         
         // And: Should properly track enabled state
         for source in allSources where !source.isEnabled {
-            XCTAssertFalse(enabledSources.contains { $0.sourceId == source.sourceId },
-                          "Disabled source should not appear in enabled-only list")
+            XCTAssertFalse(
+                enabledSources.contains { $0.sourceId == source.sourceId },
+                "Disabled source should not appear in enabled-only list"
+            )
         }
     }
     
@@ -74,8 +79,11 @@ class InputSourceEdgeCaseTests: XCTestCase {
             let language = Preferences.getInputSourceLanguage(unknownId)
             
             // Then: Should fallback to default category
-            XCTAssertEqual(language, "English & Others", 
-                          "Unknown source '\(unknownId)' should fallback to 'English & Others'")
+            XCTAssertEqual(
+                language,
+                "English & Others",
+                "Unknown source '\(unknownId)' should fallback to 'English & Others'"
+            )
         }
     }
     
@@ -191,8 +199,11 @@ class InputSourceEdgeCaseTests: XCTestCase {
             let category = Preferences.getInputSourceCategory(sourceId)
             
             // Then: Should match expected category
-            XCTAssertEqual(category, expectedCategory, 
-                          "Source '\(sourceId)' should be categorized as '\(expectedCategory)', got '\(category)'")
+            XCTAssertEqual(
+                category,
+                expectedCategory,
+                "Source '\(sourceId)' should be categorized as '\(expectedCategory)', got '\(category)'"
+            )
         }
     }
     
@@ -213,13 +224,15 @@ class InputSourceEdgeCaseTests: XCTestCase {
         for searchTerm in specialSearchTerms {
             // When: Filtering with special characters
             let filteredSources = allSources.filter { source in
-                source.localizedName.localizedCaseInsensitiveContains(searchTerm) ||
-                source.sourceId.localizedCaseInsensitiveContains(searchTerm)
+                source.localizedName.localizedCaseInsensitiveContains(searchTerm)
+                    || source.sourceId.localizedCaseInsensitiveContains(searchTerm)
             }
             
             // Then: Should handle special characters without crashing
-            XCTAssertTrue(filteredSources.isEmpty || !filteredSources.isEmpty, 
-                         "Should handle special search term '\(searchTerm)' without crashing")
+            XCTAssertTrue(
+                filteredSources.isEmpty || !filteredSources.isEmpty,
+                "Should handle special search term '\(searchTerm)' without crashing"
+            )
             
             // For empty search, should return empty results (as the filter requires contains)
             if searchTerm.isEmpty {

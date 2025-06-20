@@ -76,8 +76,8 @@ class ImeController {
         if let cachedSource = inputSourceCache[inputSourceID] {
             
             // Apply workaround when switching within the same IME family
-            let currentFamily = currentSource.components(separatedBy: ".").prefix(3).joined(separator: ".")
-            let targetFamily = inputSourceID.components(separatedBy: ".").prefix(3).joined(separator: ".")
+            let currentFamily = getIMEFamily(currentSource)
+            let targetFamily = getIMEFamily(inputSourceID)
             
             if currentFamily == targetFamily && currentFamily != "com.apple.keylayout" {
                 // Switch to English first, then to target mode
@@ -91,19 +91,7 @@ class ImeController {
             TISSelectInputSource(cachedSource)
             
             // Verify input source after change
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                let newSource = self.getCurrentInputSource()
-                
-                if newSource != inputSourceID {
-                    Logger.error("Failed to switch. Expected: \(inputSourceID), Actual: \(newSource)", category: .ime)
-                    
-                    // Retry for same IME family
-                    let targetFamily = inputSourceID.components(separatedBy: ".").prefix(3).joined(separator: ".")
-                    if targetFamily != "com.apple.keylayout" {
-                        TISSelectInputSource(cachedSource)
-                    }
-                }
-            }
+            verifyInputSourceSwitch(targetID: inputSourceID, source: cachedSource)
             return
         }
         
@@ -131,22 +119,35 @@ class ImeController {
                     found = true
                     
                     // Verify input source after change
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        let newSource = self.getCurrentInputSource()
-                        
-                        if newSource != inputSourceID {
-                            Logger.error(
-                                "Failed to switch. Expected: \(inputSourceID), Actual: \(newSource)", 
-                                category: .ime
-                            )
-                        }
-                    }
+                    verifyInputSourceSwitch(targetID: inputSourceID, source: inputSource)
                 }
             }
         }
         
         if !found {
             throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
+        }
+    }
+    
+    // Helper function to reduce complexity
+    private func getIMEFamily(_ sourceID: String) -> String {
+        return sourceID.components(separatedBy: ".").prefix(3).joined(separator: ".")
+    }
+    
+    // Helper function to verify input source switch
+    private func verifyInputSourceSwitch(targetID: String, source: TISInputSource) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let newSource = self.getCurrentInputSource()
+            
+            if newSource != targetID {
+                Logger.error("Failed to switch. Expected: \(targetID), Actual: \(newSource)", category: .ime)
+                
+                // Retry for same IME family
+                let targetFamily = self.getIMEFamily(targetID)
+                if targetFamily != "com.apple.keylayout" {
+                    TISSelectInputSource(source)
+                }
+            }
         }
     }
     

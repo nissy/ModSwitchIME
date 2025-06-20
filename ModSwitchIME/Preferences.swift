@@ -4,6 +4,83 @@ import ServiceManagement
 import Carbon
 import CoreGraphics
 
+// MARK: - InputSourceHelper
+
+struct InputSourceHelper {
+    // Helper function to get ATOK display name
+    static func getATOKDisplayName(id: String, defaultName: String) -> String {
+        guard id.contains("atok") else {
+            return defaultName
+        }
+        
+        if id.contains(".Japanese.Katakana") {
+            return "ATOK - Katakana"
+        } else if id.contains(".Japanese.FullWidthRoman") {
+            return "ATOK - Full-width Roman"
+        } else if id.contains(".Japanese.HalfWidthEiji") {
+            return "ATOK - Half-width Eiji"
+        } else if id.contains(".Roman") {
+            return "ATOK - Roman"
+        } else if id.hasSuffix(".Japanese") {
+            return "ATOK - Hiragana"
+        } else {
+            return "ATOK - \(defaultName)"
+        }
+    }
+    
+    static func getInputSourceCategory(_ sourceId: String) -> String {
+        if sourceId.hasPrefix("com.apple.keylayout.") {
+            return "Keyboard Layout"
+        } else if sourceId.contains("inputmethod") || sourceId.contains("ATOK") || sourceId.contains("google") {
+            return "Input Method"
+        } else {
+            return "Others"
+        }
+    }
+    
+    static func getInputSourceIcon(_ sourceId: String) -> String? {
+        let lowercased = sourceId.lowercased()
+        
+        // Check for specific patterns in order of priority
+        if sourceId.contains("ABC") || sourceId.contains("US") {
+            return "🇺🇸"
+        } else if lowercased.contains("japanese") || lowercased.contains("kotoeri") || 
+                  sourceId.contains("ATOK") || sourceId.contains("atok") ||
+                  lowercased.contains("com.google.inputmethod.japanese") {
+            return "🇯🇵"
+        } else if lowercased.contains("korean") || lowercased.contains("hangul") {
+            return "🇰🇷"
+        } else if sourceId.contains("TCIM") || lowercased.contains("cangjie") || 
+                  lowercased.contains("zhuyin") || lowercased.contains("stroke") {
+            return "🇨🇳"
+        } else if sourceId.contains("SCIM") || lowercased.contains("pinyin") || 
+                  lowercased.contains("wubi") {
+            return "🇨🇳"
+        } else if lowercased.contains("vietnamese") || lowercased.contains("telex") ||
+                  sourceId.contains("VNI") || sourceId.contains("VIQR") {
+            return "🇻🇳"
+        } else if lowercased.contains("thai") {
+            return "🇹🇭"
+        } else if lowercased.contains("arabic") {
+            return "🇸🇦"
+        } else if lowercased.contains("hebrew") {
+            return "🇮🇱"
+        } else if lowercased.contains("russian") || lowercased.contains("cyrillic") {
+            return "🇷🇺"
+        } else if lowercased.contains("french") {
+            return "🇫🇷"
+        } else if lowercased.contains("german") {
+            return "🇩🇪"
+        } else if lowercased.contains("spanish") {
+            return "🇪🇸"
+        } else if lowercased.contains("chinese") || sourceId.contains("中文") {
+            return "🇨🇳"
+        } else {
+            return "⌨️"
+        }
+    }
+}
+
 // MARK: - ModifierKey
 
 enum ModifierKey: String, CaseIterable, Codable {
@@ -64,8 +141,10 @@ class Preferences: ObservableObject {
     // For testing purposes only
     internal static func createForTesting() -> Preferences {
         // Clear test-related UserDefaults to ensure clean state
-        let keysToRemove = ["idleOffEnabled", "idleTimeout", "launchAtLogin", "motherImeId", 
-                           "cmdKeyTimeout", "cmdKeyTimeoutEnabled", "idleReturnIME"]
+        let keysToRemove = [
+            "idleOffEnabled", "idleTimeout", "launchAtLogin", "motherImeId",
+            "cmdKeyTimeout", "cmdKeyTimeoutEnabled", "idleReturnIME"
+        ]
         for key in keysToRemove {
             UserDefaults.standard.removeObject(forKey: key)
         }
@@ -272,24 +351,8 @@ class Preferences: ObservableObject {
             }
             
             // Display ATOK modes individually
-            if id.contains("atok") {
-                // Display with mode name
-                if id.contains(".Japanese.Katakana") {
-                    sources.append((id: id, name: "ATOK - Katakana"))
-                } else if id.contains(".Japanese.FullWidthRoman") {
-                    sources.append((id: id, name: "ATOK - Full-width Roman"))
-                } else if id.contains(".Japanese.HalfWidthEiji") {
-                    sources.append((id: id, name: "ATOK - Half-width Eiji"))
-                } else if id.contains(".Roman") {
-                    sources.append((id: id, name: "ATOK - Roman"))
-                } else if id.hasSuffix(".Japanese") {
-                    sources.append((id: id, name: "ATOK - Hiragana"))
-                } else {
-                    sources.append((id: id, name: "ATOK - \(name)"))
-                }
-            } else {
-                sources.append((id: id, name: name))
-            }
+            let displayName = InputSourceHelper.getATOKDisplayName(id: id, defaultName: name)
+            sources.append((id: id, name: displayName))
         }
         
         return sources.sorted { $0.name < $1.name }
@@ -455,29 +518,14 @@ class Preferences: ObservableObject {
         return sources.sorted { $0.localizedName < $1.localizedName }
     }
     
+    
+    // Public static methods that delegate to InputSourceHelper
     static func getInputSourceCategory(_ sourceId: String) -> String {
-        if sourceId.hasPrefix("com.apple.keylayout.") {
-            return "Keyboard Layout"
-        } else if sourceId.contains("inputmethod") || sourceId.contains("ATOK") || sourceId.contains("google") {
-            return "Input Method"
-        } else {
-            return "Others"
-        }
+        return InputSourceHelper.getInputSourceCategory(sourceId)
     }
     
     static func getInputSourceIcon(_ sourceId: String) -> String? {
-        // Simple icon/emoji mapping
-        if sourceId.contains("Japanese") || sourceId.contains("ATOK") || sourceId.contains("Kotoeri") {
-            return "🇯🇵"
-        } else if sourceId.contains("ABC") || sourceId.contains("US") {
-            return "🇺🇸"
-        } else if sourceId.contains("Chinese") || sourceId.contains("TCIM") || sourceId.contains("SCIM") {
-            return "🇨🇳"
-        } else if sourceId.contains("Korean") {
-            return "🇰🇷"
-        } else {
-            return "⌨️"
-        }
+        return InputSourceHelper.getInputSourceIcon(sourceId)
     }
     
     // Input Source struct
@@ -490,68 +538,98 @@ class Preferences: ObservableObject {
     
     // Detect language
     static func getInputSourceLanguage(_ sourceId: String) -> String {
-        // Japanese
-        if sourceId.contains("Japanese") || sourceId.contains("Kotoeri") || 
+        if isAsianLanguage(sourceId) {
+            return detectAsianLanguage(sourceId)
+        } else if isMiddleEasternLanguage(sourceId) {
+            return detectMiddleEasternLanguage(sourceId)
+        } else if isIndicLanguage(sourceId) {
+            return "Indic Languages"
+        } else if isCyrillicLanguage(sourceId) {
+            return "Cyrillic Scripts"
+        } else if isEuropeanLanguage(sourceId) {
+            return "European Languages"
+        } else {
+            return "English & Others"
+        }
+    }
+    
+    // Helper function for Asian languages
+    private static func isAsianLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Japanese") || sourceId.contains("Kotoeri") ||
+               sourceId.contains("ATOK") || sourceId.contains("atok") ||
+               sourceId.contains("com.google.inputmethod.Japanese") ||
+               sourceId.contains("Chinese") || sourceId.contains("TCIM") ||
+               sourceId.contains("SCIM") || sourceId.contains("Pinyin") ||
+               sourceId.contains("Cangjie") || sourceId.contains("Zhuyin") ||
+               sourceId.contains("Wubi") || sourceId.contains("Stroke") ||
+               sourceId.contains("Korean") || sourceId.contains("Hangul") ||
+               sourceId.contains("Vietnamese") || sourceId.contains("Telex") ||
+               sourceId.contains("VNI") || sourceId.contains("VIQR") ||
+               sourceId.contains("Thai")
+    }
+    
+    private static func detectAsianLanguage(_ sourceId: String) -> String {
+        if sourceId.contains("Japanese") || sourceId.contains("Kotoeri") ||
            sourceId.contains("ATOK") || sourceId.contains("atok") ||
            sourceId.contains("com.google.inputmethod.Japanese") {
             return "Japanese"
-        }
-        // Chinese
-        else if sourceId.contains("Chinese") || sourceId.contains("TCIM") || 
-                sourceId.contains("SCIM") || sourceId.contains("Pinyin") ||
-                sourceId.contains("Cangjie") || sourceId.contains("Zhuyin") ||
-                sourceId.contains("Wubi") || sourceId.contains("Stroke") {
+        } else if sourceId.contains("Chinese") || sourceId.contains("TCIM") ||
+                  sourceId.contains("SCIM") || sourceId.contains("Pinyin") ||
+                  sourceId.contains("Cangjie") || sourceId.contains("Zhuyin") ||
+                  sourceId.contains("Wubi") || sourceId.contains("Stroke") {
             return "Chinese"
-        }
-        // Korean
-        else if sourceId.contains("Korean") || sourceId.contains("Hangul") {
+        } else if sourceId.contains("Korean") || sourceId.contains("Hangul") {
             return "Korean"
-        }
-        // Vietnamese
-        else if sourceId.contains("Vietnamese") || sourceId.contains("Telex") ||
-                sourceId.contains("VNI") || sourceId.contains("VIQR") {
+        } else if sourceId.contains("Vietnamese") || sourceId.contains("Telex") ||
+                  sourceId.contains("VNI") || sourceId.contains("VIQR") {
             return "Vietnamese"
-        }
-        // Arabic
-        else if sourceId.contains("Arabic") {
-            return "Arabic"
-        }
-        // Hebrew
-        else if sourceId.contains("Hebrew") {
-            return "Hebrew"
-        }
-        // Thai
-        else if sourceId.contains("Thai") {
+        } else if sourceId.contains("Thai") {
             return "Thai"
+        } else {
+            return "Asian Language"
         }
-        // Indic languages
-        else if sourceId.contains("Hindi") || sourceId.contains("Devanagari") ||
-                sourceId.contains("Tamil") || sourceId.contains("Telugu") ||
-                sourceId.contains("Bengali") || sourceId.contains("Bangla") ||
-                sourceId.contains("Gujarati") || sourceId.contains("Kannada") ||
-                sourceId.contains("Malayalam") || sourceId.contains("Marathi") ||
-                sourceId.contains("Punjabi") || sourceId.contains("Sanskrit") {
-            return "Indic Languages"
+    }
+    
+    // Helper function for Middle Eastern languages
+    private static func isMiddleEasternLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Arabic") || sourceId.contains("Hebrew")
+    }
+    
+    private static func detectMiddleEasternLanguage(_ sourceId: String) -> String {
+        if sourceId.contains("Arabic") {
+            return "Arabic"
+        } else if sourceId.contains("Hebrew") {
+            return "Hebrew"
+        } else {
+            return "Middle Eastern Language"
         }
-        // Cyrillic scripts
-        else if sourceId.contains("Russian") || sourceId.contains("Ukrainian") ||
-                sourceId.contains("Bulgarian") || sourceId.contains("Serbian") ||
-                sourceId.contains("Macedonian") || sourceId.contains("Belarusian") {
-            return "Cyrillic Scripts"
-        }
-        // European languages
-        else if sourceId.contains("French") || sourceId.contains("German") ||
-                sourceId.contains("Spanish") || sourceId.contains("Italian") ||
-                sourceId.contains("Portuguese") || sourceId.contains("Dutch") ||
-                sourceId.contains("Polish") || sourceId.contains("Czech") ||
-                sourceId.contains("Hungarian") || sourceId.contains("Romanian") ||
-                sourceId.contains("Greek") || sourceId.contains("Turkish") {
-            return "European Languages"
-        }
-        // English and others
-        else {
-            return "English & Others"
-        }
+    }
+    
+    // Helper function for Indic languages
+    private static func isIndicLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Hindi") || sourceId.contains("Devanagari") ||
+               sourceId.contains("Tamil") || sourceId.contains("Telugu") ||
+               sourceId.contains("Bengali") || sourceId.contains("Bangla") ||
+               sourceId.contains("Gujarati") || sourceId.contains("Kannada") ||
+               sourceId.contains("Malayalam") || sourceId.contains("Marathi") ||
+               sourceId.contains("Punjabi") || sourceId.contains("Sanskrit")
+    }
+    
+    // Helper function for Cyrillic languages
+    private static func isCyrillicLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Russian") || sourceId.contains("Ukrainian") ||
+               sourceId.contains("Bulgarian") || sourceId.contains("Serbian") ||
+               sourceId.contains("Macedonian") || sourceId.contains("Belarusian")
+    }
+    
+    // Helper function for European languages
+    private static func isEuropeanLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("French") || sourceId.contains("German") ||
+               sourceId.contains("Spanish") || sourceId.contains("Italian") ||
+               sourceId.contains("Portuguese") || sourceId.contains("Dutch") ||
+               sourceId.contains("Polish") || sourceId.contains("Czech") ||
+               sourceId.contains("Hungarian") || sourceId.contains("Romanian") ||
+               sourceId.contains("Greek") || sourceId.contains("Turkish")
     }
     
     // MARK: - Modifier Key Mapping Persistence

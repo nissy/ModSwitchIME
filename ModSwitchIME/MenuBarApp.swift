@@ -13,6 +13,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var statusBarItem: NSStatusItem?
     let preferences = Preferences.shared
     private var preferencesWindowController: NSWindowController?
+    private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     
     override init() {
@@ -49,9 +50,16 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     
     private func showAccessibilityAlert() {
         let alert = NSAlert()
-        alert.messageText = "Permission Required"
+        alert.messageText = "Accessibility Permission Required"
         alert.informativeText = """
             ModSwitchIME needs permission to detect modifier key presses.
+            
+            ⚠️ Important Privacy Information:
+            • ONLY modifier keys (⌘, ⇧, ⌃, ⌥) are monitored
+            • NO text input or regular keystrokes are captured
+            • NO data is stored or transmitted
+            • All processing happens locally on your Mac
+            • You can revoke access anytime in System Settings
             
             Please enable ModSwitchIME in:
             System Settings → Privacy & Security → Accessibility
@@ -146,83 +154,100 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             button.toolTip = "ModSwitchIME - IME Switcher"
         }
         
-        let menu = NSMenu()
-        
-        let aboutItem = NSMenuItem(title: "About ModSwitchIME", action: #selector(showAbout), keyEquivalent: "")
-        aboutItem.target = self
-        menu.addItem(aboutItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        let preferencesItem = NSMenuItem(
-            title: "Preferences...", 
-            action: #selector(showPreferences), 
-            keyEquivalent: ","
-        )
-        preferencesItem.target = self
-        preferencesItem.tag = 101
-        menu.addItem(preferencesItem)
-        
-        let permissionItem = NSMenuItem(
-            title: "Grant Permissions...", 
-            action: #selector(checkPermission), 
-            keyEquivalent: ""
-        )
-        permissionItem.target = self
-        permissionItem.tag = 100
-        menu.addItem(permissionItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        let launchAtLoginItem = NSMenuItem(
-            title: "Launch at Login", 
-            action: #selector(toggleLaunchAtLogin), 
-            keyEquivalent: ""
-        )
-        launchAtLoginItem.target = self
-        launchAtLoginItem.tag = 102
-        menu.addItem(launchAtLoginItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Add restart item if needed
-        let restartItem = NSMenuItem(
-            title: "Restart ModSwitchIME",
-            action: #selector(restartApp),
-            keyEquivalent: "r"
-        )
-        restartItem.target = self
-        restartItem.tag = 103
-        menu.addItem(restartItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Debug menu item (only in debug builds)
-        #if DEBUG
-        let debugItem = NSMenuItem(title: "Debug Info", action: #selector(showDebugInfo), keyEquivalent: "d")
-        debugItem.target = self
-        menu.addItem(debugItem)
-        #endif
-        
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-        
+        let menu = createMenu()
         statusBarItem?.menu = menu
         
         // Set menu delegate for dynamic updates
         menu.delegate = self
     }
     
+    private func createMenu() -> NSMenu {
+        let menu = NSMenu()
+        
+        // About
+        addMenuItem(to: menu, title: "About ModSwitchIME", action: #selector(showAbout))
+        menu.addItem(NSMenuItem.separator())
+        
+        // Preferences & Permissions
+        addMenuItem(to: menu, title: "Preferences...", action: #selector(showPreferences), keyEquivalent: ",", tag: 101)
+        addMenuItem(to: menu, title: "Grant Permissions...", action: #selector(checkPermission), tag: 100)
+        menu.addItem(NSMenuItem.separator())
+        
+        // Launch at Login
+        addMenuItem(to: menu, title: "Launch at Login", action: #selector(toggleLaunchAtLogin), tag: 102)
+        menu.addItem(NSMenuItem.separator())
+        
+        // Restart
+        addMenuItem(
+            to: menu,
+            title: "Restart ModSwitchIME",
+            action: #selector(restartApp),
+            keyEquivalent: "r",
+            tag: 103
+        )
+        menu.addItem(NSMenuItem.separator())
+        
+        // Debug menu item (only in debug builds)
+        #if DEBUG
+        addMenuItem(to: menu, title: "Debug Info", action: #selector(showDebugInfo), keyEquivalent: "d")
+        #endif
+        
+        // Quit
+        addMenuItem(to: menu, title: "Quit", action: #selector(quit), keyEquivalent: "q")
+        
+        return menu
+    }
+    
+    private func addMenuItem(to menu: NSMenu, title: String, action: Selector, keyEquivalent: String = "", tag: Int = 0) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        if tag != 0 {
+            item.tag = tag
+        }
+        menu.addItem(item)
+    }
+    
     @objc private func showAbout() {
-        NSApplication.shared.orderFrontStandardAboutPanel(nil)
+        // Create custom about window
+        if aboutWindowController == nil {
+            let aboutWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            aboutWindow.center()
+            aboutWindow.title = "About ModSwitchIME"
+            aboutWindow.isReleasedWhenClosed = false
+            
+            let hostingController = NSHostingController(rootView: AboutView())
+            aboutWindow.contentViewController = hostingController
+            
+            aboutWindowController = NSWindowController(window: aboutWindow)
+        }
+        
+        // Activate app to bring window to front
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        
+        aboutWindowController?.showWindow(nil)
+        aboutWindowController?.window?.makeKeyAndOrderFront(nil)
+        
+        // Restore activation policy when window closes
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: aboutWindowController?.window,
+            queue: .main
+        ) { _ in
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
     
     @objc private func showPreferences() {
         // Create settings window directly
         if preferencesWindowController == nil {
             let preferencesWindow = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 500, height: 700),
+                contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
                 styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
@@ -363,23 +388,47 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     @objc private func restartApp() {
-        // Get current application path
-        let appPath = Bundle.main.bundleURL.path
+        // Get current application URL
+        let appURL = Bundle.main.bundleURL
         
-        // Script to restart the app
-        let script = """
-            sleep 0.5
-            open '\(appPath)'
-        """
-        
-        // Execute script in background
+        // Create a separate process to relaunch the app
         let task = Process()
-        task.launchPath = "/bin/bash"
-        task.arguments = ["-c", script]
-        task.launch()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        task.arguments = ["-n", appURL.path]
         
-        // Terminate current app
-        NSApplication.shared.terminate(nil)
+        // Set up the process to run independently
+        task.standardOutput = nil
+        task.standardError = nil
+        task.standardInput = nil
+        
+        do {
+            // Launch the process
+            try task.run()
+            
+            // Wait a moment to ensure the process starts
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Terminate current app
+                NSApplication.shared.terminate(nil)
+            }
+        } catch {
+            Logger.error("Failed to restart app: \(error.localizedDescription)", category: .main)
+            
+            // Fallback: Try using NSWorkspace
+            let workspace = NSWorkspace.shared
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            
+            workspace.openApplication(at: appURL, configuration: configuration) { _, error in
+                if let error = error {
+                    Logger.error("Fallback restart also failed: \(error.localizedDescription)", category: .main)
+                } else {
+                    // If fallback succeeds, terminate after a delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        NSApplication.shared.terminate(nil)
+                    }
+                }
+            }
+        }
     }
     
     @objc private func showDebugInfo() {
@@ -473,5 +522,49 @@ extension MenuBarApp: NSMenuDelegate {
                 break
             }
         }
+    }
+}
+
+// MARK: - About View
+
+struct AboutView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            // App icon and name
+            VStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 80, height: 80)
+                
+                Text("ModSwitchIME")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Divider()
+            
+            // Privacy & Security Notice
+            PrivacyNoticeView()
+            
+            Divider()
+            
+            // Credits
+            VStack(spacing: 5) {
+                Text("© 2025 nissy")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Link("GitHub Repository", destination: URL(string: "https://github.com/nissy/ModSwitchIME")!)
+                    .font(.caption)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .frame(width: 400, height: 500)
     }
 }

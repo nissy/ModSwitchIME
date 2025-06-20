@@ -4,19 +4,25 @@
 
 ModSwitchIME is a macOS menu bar application that enables instant IME (Input Method Editor) switching by pressing modifier keys alone. The application distinguishes between left and right modifier keys, allowing users to assign up to 8 different IMEs to individual modifier keys.
 
-## Current Project Status (2025-12-19)
+## Current Project Status (2025-06-20)
 
 ### Build Status
 - ✅ **Build**: Fully functional (`make build` succeeds)
-- ✅ **Tests**: All 134 tests passing
+- ✅ **Tests**: All tests passing (189 tests)
 - ✅ **Code Signing**: Automatic signing with DEVELOPMENT_TEAM
-- ✅ **Target macOS**: 13.0+ (Ventura and later)
+- ✅ **Target macOS**: 15.0+ (Sequoia and later)
 
 ### Implementation Status
 - ✅ **Core Features**: 100% implemented and tested
 - ✅ **Real-time Updates**: All settings apply without restart
 - ✅ **Performance**: < 15ms switching, < 0.1% CPU idle
 - ✅ **Memory Usage**: < 25MB RSS
+
+### Recent Changes
+- Fixed circular reference issue in `InputSourceHelper` struct
+- Implemented `getInputSourceIcon` and `getInputSourceCategory` methods
+- All input source functionality now working correctly
+- App launches without crashes and PreferencesView displays IME icons properly
 
 ## Architecture Overview
 

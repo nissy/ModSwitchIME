@@ -233,8 +233,11 @@ class AccessibilityMockTests: XCTestCase {
             let menuState = app.isAccessibilityEnabled ? "enabled" : "disabled"
             
             // Then: Menu state should match
-            XCTAssertEqual(menuState, scenario.expectedMenuState,
-                          "Menu state should be \(scenario.expectedMenuState) when trusted=\(scenario.trusted)")
+            XCTAssertEqual(
+                menuState,
+                scenario.expectedMenuState,
+                "Menu state should be \(scenario.expectedMenuState) when trusted=\(scenario.trusted)"
+            )
         }
     }
     
@@ -328,8 +331,11 @@ class AccessibilityMockTests: XCTestCase {
         }
         
         // When: Permission state changes
-        NotificationCenter.default.post(name: notificationName, object: nil,
-                                      userInfo: ["granted": true])
+        NotificationCenter.default.post(
+            name: notificationName,
+            object: nil,
+            userInfo: ["granted": true]
+        )
         
         // Then: Notification should be received
         wait(for: [notificationExpectation], timeout: 1.0)

@@ -15,46 +15,58 @@ class InputSourceDebugTests: XCTestCase {
         // 総数: \(inputSourceList.count)
         
         for (index, inputSource) in inputSourceList.enumerated() {
-            // --- 入力ソース #\(index + 1) ---
-            
-            // ID
-            if let sourceId = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
-                let cfString = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue()
-                // ID: \(cfString as String)
-            }
-            
-            // ローカライズ名
-            if let localizedName = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
-                let cfString = Unmanaged<CFString>.fromOpaque(localizedName).takeUnretainedValue()
-                // 名前: \(cfString as String)
-            }
-            
-            // カテゴリー
-            if let category = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) {
-                let cfString = Unmanaged<CFString>.fromOpaque(category).takeUnretainedValue()
-                // カテゴリー: \(cfString as String)
-            }
-            
-            // タイプ
-            if let type = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceType) {
-                let cfString = Unmanaged<CFString>.fromOpaque(type).takeUnretainedValue()
-                // タイプ: \(cfString as String)
-            }
-            
-            // 選択可能か
-            if let selectablePtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
-                let selectable = Unmanaged<CFBoolean>.fromOpaque(selectablePtr).takeUnretainedValue()
-                // 選択可能: \(CFBooleanGetValue(selectable))
-            }
-            
-            // 有効か
-            if let enabledPtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
-                let enabled = Unmanaged<CFBoolean>.fromOpaque(enabledPtr).takeUnretainedValue()
-                // 有効: \(CFBooleanGetValue(enabled))
-            }
+            debugPrintInputSource(inputSource, index: index)
         }
         
         // 日本語入力を探す
+        debugJapaneseInputSources(inputSourceList)
+    }
+    
+    private func debugPrintInputSource(_ inputSource: TISInputSource, index: Int) {
+        // --- 入力ソース #\(index + 1) ---
+        
+        // ID
+        if let sourceId = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
+            let cfString = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue()
+            // ID: \(cfString as String)
+        }
+        
+        // ローカライズ名
+        if let localizedName = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
+            let cfString = Unmanaged<CFString>.fromOpaque(localizedName).takeUnretainedValue()
+            // 名前: \(cfString as String)
+        }
+        
+        debugPrintInputSourceProperties(inputSource)
+    }
+    
+    private func debugPrintInputSourceProperties(_ inputSource: TISInputSource) {
+        // カテゴリー
+        if let category = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) {
+            let cfString = Unmanaged<CFString>.fromOpaque(category).takeUnretainedValue()
+            // カテゴリー: \(cfString as String)
+        }
+        
+        // タイプ
+        if let type = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceType) {
+            let cfString = Unmanaged<CFString>.fromOpaque(type).takeUnretainedValue()
+            // タイプ: \(cfString as String)
+        }
+        
+        // 選択可能か
+        if let selectablePtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
+            let selectable = Unmanaged<CFBoolean>.fromOpaque(selectablePtr).takeUnretainedValue()
+            // 選択可能: \(CFBooleanGetValue(selectable))
+        }
+        
+        // 有効か
+        if let enabledPtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+            let enabled = Unmanaged<CFBoolean>.fromOpaque(enabledPtr).takeUnretainedValue()
+            // 有効: \(CFBooleanGetValue(enabled))
+        }
+    }
+    
+    private func debugJapaneseInputSources(_ inputSourceList: [TISInputSource]) {
         // === 日本語入力の検索 ===
         let japaneseInputs = inputSourceList.filter { inputSource in
             if let sourceId = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {

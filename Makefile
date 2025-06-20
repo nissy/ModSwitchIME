@@ -169,6 +169,8 @@ dmg: package ## Create a DMG file for distribution
 		echo "$(BLUE)Creating simple DMG...$(NC)"; \
 		hdiutil create -volname "$(PROJECT_NAME)" -srcfolder "$(EXPORT_PATH)" -ov -format UDZO "$(DMG_PATH)"; \
 	fi
+	@echo "$(BLUE)Signing DMG...$(NC)"
+	codesign --force --sign "Developer ID Application" "$(DMG_PATH)" -v
 
 notarize: ## Notarize the DMG (requires APPLE_ID and APPLE_PASSWORD)
 	@echo "$(BLUE)Notarizing DMG...$(NC)"

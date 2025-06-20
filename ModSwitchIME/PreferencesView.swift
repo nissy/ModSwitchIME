@@ -1,5 +1,71 @@
 import SwiftUI
 
+// MARK: - Privacy Notice View
+
+struct PrivacyNoticeView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "lock.shield")
+                    .foregroundColor(.blue)
+                Text("Privacy & Security")
+                    .font(.headline)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("ModSwitchIME monitors ONLY modifier keys (⌘, ⇧, ⌃, ⌥)")
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                
+                HStack(alignment: .top, spacing: 4) {
+                    Text("•")
+                    Text("No typing content is recorded or stored")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                
+                HStack(alignment: .top, spacing: 4) {
+                    Text("•")
+                    Text("No data is transmitted over the network")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                
+                HStack(alignment: .top, spacing: 4) {
+                    Text("•")
+                    Text("All processing happens locally on your Mac")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                
+                HStack(alignment: .top, spacing: 4) {
+                    Text("•")
+                    Text("Open source for complete transparency")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            }
+            .padding(.leading, 20)
+            
+            HStack {
+                Link("View source code", 
+                     destination: URL(string: "https://github.com/nissy/ModSwitchIME")!)
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                
+                Spacer()
+                
+                Text("You can revoke access anytime in System Settings")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.05))
+        .cornerRadius(8)
+    }
+}
+
 struct PreferencesView: View {
     @EnvironmentObject var preferences: Preferences
     @State private var selectedModifierKey: ModifierKey?
@@ -30,7 +96,7 @@ struct PreferencesView: View {
                             Text("Return to:")
                             Button(action: {
                                 showIdleIMEPicker = true
-                            }) {
+                            }, label: {
                                 HStack {
                                     if let imeId = preferences.idleReturnIME {
                                         if let icon = Preferences.getInputSourceIcon(imeId) {
@@ -51,7 +117,7 @@ struct PreferencesView: View {
                                 .padding(.vertical, 6)
                                 .background(Color(NSColor.controlBackgroundColor))
                                 .cornerRadius(6)
-                            }
+                            })
                             .buttonStyle(.plain)
                             .frame(maxWidth: 300)
                         }
@@ -114,7 +180,7 @@ struct PreferencesView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 700)
+        .frame(width: 500, height: 600)
         .background(Color(NSColor.windowBackgroundColor))
         .sheet(item: $selectedModifierKey) { key in
             ModifierKeyInputSourcePicker(
@@ -366,7 +432,7 @@ struct InputSourceRowView: View {
             if source.isEnabled {
                 action()
             }
-        }) {
+        }, label: {
             HStack(spacing: 12) {
                 // Flag Icon - display larger
                 Text(Preferences.getInputSourceIcon(source.sourceId) ?? "⌨️")
@@ -390,7 +456,7 @@ struct InputSourceRowView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
-        }
+        })
         .buttonStyle(.plain)
         .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
         .disabled(!source.isEnabled) // Disable interaction for disabled sources

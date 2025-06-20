@@ -51,7 +51,9 @@ class KeyMonitor {
             return
         }
         
-        let eventMask = (1 << CGEventType.flagsChanged.rawValue) | (1 << CGEventType.keyDown.rawValue)
+        // Privacy protection: Only monitor modifier key events (flagsChanged)
+        // This ensures we never capture regular keystrokes or text input
+        let eventMask = (1 << CGEventType.flagsChanged.rawValue)
         
         // イベントタップを作成
         guard let eventTap = CGEvent.tapCreate(
@@ -109,18 +111,24 @@ class KeyMonitor {
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         
         // アクティビティを記録
+        let previousActivityTime = lastActivityTime
         lastActivityTime = CFAbsoluteTimeGetCurrent()
+        
+        // Reset idle timer if we were close to timeout
+        if preferences.idleOffEnabled && idleTimer != nil {
+            let timeSinceLastActivity = lastActivityTime - previousActivityTime
+            let remainingTime = preferences.idleTimeout - timeSinceLastActivity
+            
+            // If we're within 10% of the timeout, restart the timer for better accuracy
+            if remainingTime < preferences.idleTimeout * 0.1 {
+                stopIdleTimer()
+                startIdleTimer()
+            }
+        }
         
         switch type {
         case .flagsChanged:
             handleFlagsChanged(event: event)
-        case .keyDown:
-            // Check if any modifier key is down
-            let anyModifierDown = modifierKeyStates.values.contains { $0.isDown }
-            if anyModifierDown || leftCmdDown || rightCmdDown {
-                otherKeyPressed = true
-                Logger.debug("Other key pressed while modifier is down", category: .keyboard)
-            }
         case .tapDisabledByTimeout:
             Logger.error("Event tap disabled by timeout", category: .keyboard)
             // イベントタップを再有効化
@@ -140,6 +148,12 @@ class KeyMonitor {
         let flags = event.flags
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         
+        // Privacy: Clear the event data after reading
+        defer {
+            // Ensure no sensitive data remains in memory
+            event.setIntegerValueField(.keyboardEventKeycode, value: 0)
+        }
+        
         // Identify which modifier key based on keyCode
         guard let modifierKey = ModifierKey.from(keyCode: keyCode) else {
             return
@@ -156,43 +170,75 @@ class KeyMonitor {
         // Get current state
         let currentState = modifierKeyStates[modifierKey] ?? (isDown: false, downTime: 0)
         
+        // Check if other modifier keys are pressed (for combination detection)
+        let otherModifiersPressed = flags.intersection([.maskControl, .maskShift, .maskAlternate, .maskCommand])
+            .subtracting(modifierKey.flagMask)
+            .rawValue > 0
+        
         if isKeyDown && !currentState.isDown {
-            // Key pressed down
-            modifierKeyStates[modifierKey] = (isDown: true, downTime: CFAbsoluteTimeGetCurrent())
-            otherKeyPressed = false
-            Logger.debug("\(modifierKey.displayName) down", category: .keyboard)
-            
-            // Update legacy state for command keys
-            if modifierKey == .leftCommand {
-                leftCmdDown = true
+            handleKeyDown(modifierKey: modifierKey, otherModifiersPressed: otherModifiersPressed)
+        } else if !isKeyDown && currentState.isDown {
+            handleKeyUp(
+                modifierKey: modifierKey,
+                currentState: currentState,
+                otherModifiersPressed: otherModifiersPressed,
+                targetIME: targetIME
+            )
+        }
+    }
+    
+    // Helper function for key down handling
+    private func handleKeyDown(modifierKey: ModifierKey, otherModifiersPressed: Bool) {
+        modifierKeyStates[modifierKey] = (isDown: true, downTime: CFAbsoluteTimeGetCurrent())
+        otherKeyPressed = otherModifiersPressed
+        Logger.debug("\(modifierKey.displayName) down", category: .keyboard)
+        
+        // Update legacy state for command keys
+        updateLegacyCommandState(modifierKey: modifierKey, isDown: true)
+    }
+    
+    // Helper function for key up handling
+    private func handleKeyUp(modifierKey: ModifierKey, currentState: (isDown: Bool, downTime: CFAbsoluteTime), otherModifiersPressed: Bool, targetIME: String) {
+        modifierKeyStates[modifierKey] = (isDown: false, downTime: 0)
+        
+        // Only trigger if no other modifiers were pressed during this key press
+        if !otherKeyPressed && !otherModifiersPressed {
+            triggerIMESwitch(modifierKey: modifierKey, downTime: currentState.downTime, targetIME: targetIME)
+        }
+        
+        // Update legacy state for command keys
+        updateLegacyCommandState(modifierKey: modifierKey, isDown: false)
+    }
+    
+    // Helper function for IME switching logic
+    private func triggerIMESwitch(modifierKey: ModifierKey, downTime: CFAbsoluteTime, targetIME: String) {
+        if preferences.cmdKeyTimeoutEnabled {
+            let elapsed = CFAbsoluteTimeGetCurrent() - downTime
+            if elapsed < preferences.cmdKeyTimeout {
+                Logger.debug("\(modifierKey.displayName) triggered (elapsed: \(elapsed)s)", category: .keyboard)
+                imeController.switchToSpecificIME(targetIME)
+            }
+        } else {
+            Logger.debug("\(modifierKey.displayName) triggered (instant)", category: .keyboard)
+            imeController.switchToSpecificIME(targetIME)
+        }
+    }
+    
+    // Helper function for legacy command state
+    private func updateLegacyCommandState(modifierKey: ModifierKey, isDown: Bool) {
+        switch modifierKey {
+        case .leftCommand:
+            leftCmdDown = isDown
+            if isDown {
                 leftCmdDownTime = CFAbsoluteTimeGetCurrent()
-            } else if modifierKey == .rightCommand {
-                rightCmdDown = true
+            }
+        case .rightCommand:
+            rightCmdDown = isDown
+            if isDown {
                 rightCmdDownTime = CFAbsoluteTimeGetCurrent()
             }
-        } else if !isKeyDown && currentState.isDown {
-            // Key released
-            modifierKeyStates[modifierKey] = (isDown: false, downTime: 0)
-            
-            if !otherKeyPressed {
-                if preferences.cmdKeyTimeoutEnabled {
-                    let elapsed = CFAbsoluteTimeGetCurrent() - currentState.downTime
-                    if elapsed < preferences.cmdKeyTimeout {
-                        Logger.debug("\(modifierKey.displayName) triggered (elapsed: \(elapsed)s)", category: .keyboard)
-                        imeController.switchToSpecificIME(targetIME)
-                    }
-                } else {
-                    Logger.debug("\(modifierKey.displayName) triggered (instant)", category: .keyboard)
-                    imeController.switchToSpecificIME(targetIME)
-                }
-            }
-            
-            // Update legacy state for command keys
-            if modifierKey == .leftCommand {
-                leftCmdDown = false
-            } else if modifierKey == .rightCommand {
-                rightCmdDown = false
-            }
+        default:
+            break
         }
     }
     
@@ -200,21 +246,52 @@ class KeyMonitor {
     
     private func startIdleTimer() {
         guard preferences.idleOffEnabled else {
+            Logger.debug("Idle timer not started: idleOffEnabled is false", category: .keyboard)
             return
         }
         
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.checkIdleTimeout()
+        // Calculate optimal timer interval based on timeout setting
+        let interval = calculateOptimalTimerInterval()
+        
+        Logger.info("Starting idle timer with interval: \(interval)s, timeout: \(preferences.idleTimeout)s", category: .keyboard)
+        
+        // Ensure timer is created on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.idleTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+                self?.checkIdleTimeout()
+            }
+            Logger.debug("Idle timer started successfully on main thread", category: .keyboard)
+        }
+    }
+    
+    private func calculateOptimalTimerInterval() -> TimeInterval {
+        let timeout = preferences.idleTimeout
+        
+        // Use adaptive intervals based on timeout duration
+        if timeout <= 5 {
+            return 0.5  // Check every 0.5 seconds for short timeouts
+        } else if timeout <= 30 {
+            return 1.0  // Check every second for medium timeouts
+        } else if timeout <= 60 {
+            return 2.0  // Check every 2 seconds for longer timeouts
+        } else {
+            return 5.0  // Check every 5 seconds for very long timeouts
         }
     }
     
     private func stopIdleTimer() {
-        idleTimer?.invalidate()
-        idleTimer = nil
+        Logger.debug("Stopping idle timer", category: .keyboard)
+        DispatchQueue.main.async { [weak self] in
+            self?.idleTimer?.invalidate()
+            self?.idleTimer = nil
+            Logger.debug("Idle timer stopped", category: .keyboard)
+        }
     }
     
     private func checkIdleTimeout() {
         guard preferences.idleOffEnabled else {
+            Logger.debug("Idle timer check skipped: idleOffEnabled is false", category: .keyboard)
             stopIdleTimer()
             return
         }
@@ -222,12 +299,14 @@ class KeyMonitor {
         let currentTime = CFAbsoluteTimeGetCurrent()
         let idleTime = currentTime - lastActivityTime
         
+        Logger.debug("Checking idle timeout: idle for \(idleTime)s, timeout: \(preferences.idleTimeout)s", category: .keyboard)
+        
         if idleTime >= preferences.idleTimeout {
             if let idleIME = preferences.idleReturnIME {
-                Logger.info("Idle timeout reached, switching to configured IME", category: .keyboard)
+                Logger.info("Idle timeout reached (\(idleTime)s), switching to configured IME: \(idleIME)", category: .keyboard)
                 imeController.switchToSpecificIME(idleIME)
             } else {
-                Logger.info("Idle timeout reached, switching to English", category: .keyboard)
+                Logger.info("Idle timeout reached (\(idleTime)s), switching to English", category: .keyboard)
                 imeController.forceAscii()
             }
             // タイマーを再開するために最後のアクティビティ時間を更新
