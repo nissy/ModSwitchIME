@@ -47,7 +47,7 @@ NC = \033[0m # No Color
 .PHONY: all help build-dev test test-coverage test-specific lint lint-fix clean-dev version status
 
 # Production targets  
-.PHONY: build archive package dmg notarize release clean-release
+.PHONY: build archive package dmg notarize notarize-status notarize-staple release clean-release
 
 # Common targets
 .PHONY: clean clean-all
@@ -271,39 +271,73 @@ dmg: package ## Create DMG for distribution
 	@echo "$(BLUE)Signing DMG...$(NC)"
 	codesign --force --sign "Developer ID Application" "$(DMG_PATH)" -v
 
-notarize: ## Notarize DMG (requires APPLE_ID and APPLE_PASSWORD)
-	@echo "$(BLUE)Notarizing DMG...$(NC)"
+notarize: ## Submit DMG for notarization (async - returns submission ID)
+	@echo "$(BLUE)Submitting DMG for notarization...$(NC)"
 	@if [ -z "$(APPLE_ID)" ] || [ -z "$(APPLE_PASSWORD)" ]; then \
 		echo "$(RED)Error: APPLE_ID and APPLE_PASSWORD environment variables must be set$(NC)"; \
 		exit 1; \
 	fi
-	@echo "$(BLUE)Submitting for notarization...$(NC)"
+	@if [ ! -f "$(DMG_PATH)" ]; then \
+		echo "$(RED)Error: DMG file not found at $(DMG_PATH)$(NC)"; \
+		echo "$(YELLOW)Run 'make dmg' first to create the DMG$(NC)"; \
+		exit 1; \
+	fi
 	@SUBMISSION_ID=$$(xcrun notarytool submit "$(DMG_PATH)" \
 		--apple-id "$(APPLE_ID)" \
 		--password "$(APPLE_PASSWORD)" \
 		--team-id "$(DEVELOPMENT_TEAM)" \
 		--output-format json | grep -o '"id":"[^"]*"' | cut -d'"' -f4); \
-	echo "$(GREEN)Submission ID: $$SUBMISSION_ID$(NC)"; \
-	echo "$(BLUE)Waiting for notarization (timeout: 30 minutes)...$(NC)"; \
-	if xcrun notarytool wait "$$SUBMISSION_ID" \
+	if [ -n "$$SUBMISSION_ID" ]; then \
+		echo "$(GREEN)Submission ID: $$SUBMISSION_ID$(NC)"; \
+		echo "$$SUBMISSION_ID" > $(PROD_BUILD_DIR)/notarization-id.txt; \
+		echo ""; \
+		echo "$(YELLOW)Next steps:$(NC)"; \
+		echo "  1. Check status: make notarize-status"; \
+		echo "  2. Once approved, staple: make notarize-staple"; \
+		echo ""; \
+		echo "$(BLUE)Or check status directly:$(NC)"; \
+		echo "  xcrun notarytool info $$SUBMISSION_ID --apple-id \"$(APPLE_ID)\" --password \"$(APPLE_PASSWORD)\" --team-id \"$(DEVELOPMENT_TEAM)\""; \
+	else \
+		echo "$(RED)Failed to submit for notarization$(NC)"; \
+		exit 1; \
+	fi
+
+notarize-status: ## Check notarization status (use SUBMISSION_ID=xxx or reads from file)
+	@echo "$(BLUE)Checking notarization status...$(NC)"
+	@if [ -z "$(APPLE_ID)" ] || [ -z "$(APPLE_PASSWORD)" ]; then \
+		echo "$(RED)Error: APPLE_ID and APPLE_PASSWORD environment variables must be set$(NC)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(SUBMISSION_ID)" ] && [ -f "$(PROD_BUILD_DIR)/notarization-id.txt" ]; then \
+		SUBMISSION_ID=$$(cat $(PROD_BUILD_DIR)/notarization-id.txt); \
+	fi; \
+	if [ -z "$$SUBMISSION_ID" ]; then \
+		echo "$(RED)Error: No SUBMISSION_ID provided and no saved ID found$(NC)"; \
+		echo "$(YELLOW)Usage: make notarize-status SUBMISSION_ID=xxx$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(BLUE)Submission ID: $$SUBMISSION_ID$(NC)"; \
+	xcrun notarytool info "$$SUBMISSION_ID" \
 		--apple-id "$(APPLE_ID)" \
 		--password "$(APPLE_PASSWORD)" \
-		--team-id "$(DEVELOPMENT_TEAM)" \
-		--timeout 1800; then \
-		echo "$(GREEN)Notarization successful!$(NC)"; \
-		xcrun notarytool log "$$SUBMISSION_ID" \
-			--apple-id "$(APPLE_ID)" \
-			--password "$(APPLE_PASSWORD)" \
-			--team-id "$(DEVELOPMENT_TEAM)"; \
-		echo "$(BLUE)Stapling notarization ticket...$(NC)"; \
-		xcrun stapler staple "$(DMG_PATH)"; \
-		echo "$(GREEN)DMG is notarized and ready for distribution!$(NC)"; \
+		--team-id "$(DEVELOPMENT_TEAM)"
+
+notarize-staple: ## Staple notarization ticket to DMG after approval
+	@echo "$(BLUE)Stapling notarization ticket to DMG...$(NC)"
+	@if [ ! -f "$(DMG_PATH)" ]; then \
+		echo "$(RED)Error: DMG file not found at $(DMG_PATH)$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Checking if DMG is notarized...$(NC)"
+	@if xcrun stapler staple "$(DMG_PATH)"; then \
+		echo "$(GREEN)Successfully stapled notarization ticket!$(NC)"; \
+		echo "$(GREEN)DMG is ready for distribution: $(DMG_PATH)$(NC)"; \
+		echo ""; \
+		echo "$(BLUE)Verifying stapled DMG...$(NC)"; \
+		spctl -a -t open --context context:primary-signature -v "$(DMG_PATH)" || true; \
 	else \
-		echo "$(RED)Notarization failed or timed out$(NC)"; \
-		xcrun notarytool info "$$SUBMISSION_ID" \
-			--apple-id "$(APPLE_ID)" \
-			--password "$(APPLE_PASSWORD)" \
-			--team-id "$(DEVELOPMENT_TEAM)"; \
+		echo "$(RED)Failed to staple notarization ticket$(NC)"; \
+		echo "$(YELLOW)Make sure notarization is complete with: make notarize-status$(NC)"; \
 		exit 1; \
 	fi
 
@@ -313,7 +347,9 @@ release: clean lint test dmg ## Full release build (clean, lint, test, archive, 
 	@echo ""
 	@echo "$(YELLOW)Next steps:$(NC)"
 	@echo "  1. Set APPLE_ID and APPLE_PASSWORD environment variables"
-	@echo "  2. Run 'make notarize' to notarize the DMG"
+	@echo "  2. Run 'make notarize' to submit DMG for notarization"
+	@echo "  3. Run 'make notarize-status' to check notarization progress"
+	@echo "  4. Run 'make notarize-staple' once notarization is approved"
 
 #===============================================================================
 # UTILITIES

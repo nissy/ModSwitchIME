@@ -176,8 +176,30 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
                 }
             }
             
-            // Also change icon
-            self.statusBarItem?.button?.title = enabled ? "⌘" : "⌘?"
+            // Also change icon based on permission status
+            if let button = self.statusBarItem?.button {
+                if enabled {
+                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                        image.isTemplate = true
+                        button.image = image
+                        button.imagePosition = .imageOnly
+                        button.title = ""
+                    } else {
+                        button.image = nil
+                        button.title = "🌐"
+                    }
+                } else {
+                    if let image = NSImage(systemSymbolName: "globe.badge.chevron.backward", accessibilityDescription: "IME Switcher - Permission Required") {
+                        image.isTemplate = true
+                        button.image = image
+                        button.imagePosition = .imageOnly
+                        button.title = ""
+                    } else {
+                        button.image = nil
+                        button.title = "🌐❓"
+                    }
+                }
+            }
         }
     }
     
@@ -185,7 +207,15 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
         if let button = statusBarItem?.button {
-            button.title = "⌘"
+            // Use SF Symbol for automatic dark mode support
+            if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                image.isTemplate = true // Enable automatic color adaptation
+                button.image = image
+                button.imagePosition = .imageOnly
+            } else {
+                // Fallback to emoji if SF Symbol not available
+                button.title = "🌐"
+            }
             button.toolTip = "ModSwitchIME - IME Switcher"
         }
         
