@@ -48,8 +48,8 @@ struct PrivacyNoticeView: View {
             .padding(.leading, 20)
             
             HStack {
-                Link("View source code", 
-                     destination: URL(string: "https://github.com/nissy/ModSwitchIME")!)
+                Link("View security policy",
+                     destination: URL(string: "https://github.com/nissy/ModSwitchIME/blob/main/SECURITY_POLICY.md")!)
                     .font(.caption)
                     .foregroundColor(.blue)
                 

@@ -23,8 +23,9 @@ ModSwitchIME is designed with privacy and security as core principles. This docu
 
 ### 1. Minimal Permissions
 - Only requests Accessibility permission for modifier key detection
-- No sandboxing exemptions for network or file access
+- Limited entitlements for input method functionality and system integration
 - Event monitoring limited to `flagsChanged` events only
+- Read-only file access for user-selected files (system integration)
 
 ### 2. Privacy Protection
 - **No keylogging**: Regular keystrokes are never captured
@@ -38,8 +39,9 @@ ModSwitchIME is designed with privacy and security as core principles. This docu
 - Regular security updates and community review
 
 ### 4. Code Signing & Notarization
-- Signed with Developer ID certificate
-- Notarized by Apple for additional security verification
+- **Production builds**: Signed with Developer ID certificate
+- **Development builds**: Ad-hoc signed for local development  
+- Notarized by Apple for additional security verification (production only)
 - Hardened Runtime enabled
 
 ## Accessibility Permission
@@ -59,6 +61,7 @@ You can revoke this permission at any time:
 1. **Download from official sources only**
    - GitHub Releases: https://github.com/nissy/ModSwitchIME/releases
    - Verify code signature: `codesign -dv --verbose=4 /Applications/ModSwitchIME.app`
+   - Production builds should show: `Authority=Developer ID Application: Yoshihiko Nishida (R7LKF73J2W)`
 
 2. **Review permissions**
    - Only grant Accessibility permission
@@ -86,10 +89,11 @@ If you discover a security vulnerability, please report it responsibly:
 - **Date**: 2025-06-20
 - **Version**: 1.0.0
 - **Changes**:
-  - Removed keyDown event monitoring for enhanced privacy
-  - Added immediate event data disposal
+  - Confirmed flagsChanged-only event monitoring for enhanced privacy
+  - Verified immediate event data disposal implementation
   - Enhanced user privacy notifications
-  - Created comprehensive security documentation
+  - Updated security documentation with actual implementation details
+  - Verified minimal entitlements configuration
 
 ### Security Checklist
 - [x] Minimal permission model

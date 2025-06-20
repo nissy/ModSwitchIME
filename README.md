@@ -35,7 +35,7 @@ Choose from any IME registered in your system.
 - Press modifier key alone → Switch to assigned IME
 - Modifier key + other keys → Normal shortcuts (Cmd+C, Cmd+V, etc.)
 - Distinguishes between left and right modifier keys
-- Detection time adjustable from 0.1 to 1.0 seconds (default: 0.3 seconds)
+- Detection time adjustable from 0.1 to 1.0 seconds (default: 0.06 seconds)
 
 #### Supported IMEs
 - **Japanese**: Kotoeri, Google Japanese Input, ATOK, Kawasemi, etc.
@@ -124,6 +124,17 @@ Japanese IME example:
 Chinese IME example:
 - Select "Chinese" → Pinyin, Zhuyin, handwriting input all available
 
+## Security & Privacy
+
+ModSwitchIME is designed with privacy and security as core principles:
+
+- **Privacy-first design**: Only monitors modifier keys, never captures regular typing
+- **No data collection**: All processing happens locally on your Mac
+- **Open source**: Complete source code available for inspection
+- **Code signed**: Official releases are signed and notarized by Apple
+
+📋 **[View detailed Security Policy](https://github.com/nissy/ModSwitchIME/blob/main/SECURITY_POLICY.md)**
+
 ## Installation
 
 ### System Requirements
@@ -153,7 +164,7 @@ Chinese IME example:
 
 #### Detection Time (Wait Before Switching)
 - Modifier key alone detection time: 0.1-1.0 seconds (100-1000ms)
-- Default: 0.3 seconds (300ms)
+- Default: 0.06 seconds (60ms)
 
 #### Auto-Switch on Idle
 - Idle time: 1-300 seconds
