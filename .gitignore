@@ -1,258 +1,43 @@
 # Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
-
-## User settings
 xcuserdata/
-
-## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
-*.xcscmblueprint
-*.xccheckout
-
-## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+*.xcuserstate
 build/
 DerivedData/
-*.moved-aside
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-
-## Obj-C/Swift specific
-*.hmap
-
-## App packaging
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
 
 # Swift Package Manager
-#
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-# Packages/
-# Package.pins
-# Package.resolved
-# *.xcodeproj
-#
-# Xcode automatically generates this directory with a .xcworkspacedata file and xcshareddata dir
-
 .swiftpm/
 .build/
 
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
-Carthage/Build/
-
-# Accio dependency management
-Dependencies/
-.accio/
-
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
-
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/**/*.png
-fastlane/test_output
-
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
-iOSInjectionProject/
-
 # Build artifacts
-build/
 *.xcarchive
 *.dmg
-*.pkg
-*.zip
-
-# Distribution
-export/
-dist/
-
-# Certificates and provisioning profiles (keep these secure!)
-*.p12
-*.mobileprovision
-*.cer
-*.certSigningRequest
-
-# Local environment files
-.env
-.env.local
-.env.*.local
-.envrc
+*.dSYM
 
 # Generated files
 ModSwitchIME/Info.plist
 ExportOptions.plist
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Environment files
+.envrc
 
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Icon must end with two \r
-Icon
-
-# Thumbnails
-._*
-
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-# SwiftLint cache
-.swiftlint.cache
-
-# SwiftFormat cache
-.swiftformat.cache
-
-# Documentation
-docs/
-*.docset/
 
 # Test results
 TestResults/
-test_output/
 coverage/
-*.gcov
-*.gcda
-*.gcno
 
 # Logs
 *.log
-logs/
 
-# Temporary files
-tmp/
-temp/
-
-# Custom build tools
-scripts/build_number.txt
-
-# Local configuration overrides
-local.yml
-local.json
-
-# Backup files
-*.backup
-*.bak
-*.orig
-
-# Archives
-*.tar.gz
-*.tgz
-*.tar.bz2
-*.tbz2
-
-# Development certificates that shouldn't be committed
-dev_certificates/
-
-# App Store Connect API Key (keep this secure!)
+# Certificates (keep secure)
+*.p12
+*.mobileprovision
+*.cer
 AuthKey_*.p8
 
-# Localization
-*.strings.backup
-
-# Project-specific temporary files
-temp_source_backup/
-temp_*
-check_sources.swift
-test_access.swift
-monitor_log.sh
-create_temp_icon.sh
-
-# Input Method Kit cache files
-*.imk
-*.imkdict
-
-# Debugging symbols
-*.dSYM/
-
-# Simulator builds
-iphonesimulator/
-appletvsimulator/
-watchsimulator/
-
-# Profiling data
-*.profraw
-*.profdata
-
-# Private keys and certificates
-private_key.pem
-*.pem
-*.key
-*.p12
-*.cer
-*.certSigningRequest
-*.mobileprovision
-
-# Test scripts
-test_*.swift
-check_*.swift
-monitor_*.sh
-
-# Build scripts (if auto-generated)
-create_*.sh
-
-# System logs
-/var/log/
-
-# Xcode workspace state
-*.xcuserstate
-UserInterfaceState.xcuserstate
-
-# claude
-.claude/
-
-SPECS.md
+# Developer
 RELEASE.md
-
+SPECS.md
+CLAUDE.md
+.claude/
