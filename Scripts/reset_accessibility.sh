@@ -6,7 +6,7 @@
 echo "ModSwitchIME のアクセシビリティ権限をリセットします..."
 
 # Bundle IDを取得
-BUNDLE_ID="${PRODUCT_BUNDLE_IDENTIFIER:-com.shun-fu-tech.ModSwitchIME}"
+BUNDLE_ID="${PRODUCT_BUNDLE_IDENTIFIER:-com.nissy.ModSwitchIME}"
 
 # TCCデータベースから権限を削除（要管理者権限）
 echo "TCCデータベースから権限を削除中..."

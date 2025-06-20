@@ -7,6 +7,8 @@ enum ModSwitchIMEError: LocalizedError {
     case imeControllerInitializationFailed
     case invalidConfiguration
     case systemError(Error)
+    case eventTapCreationFailed(reason: String)
+    case eventTapDisabled(automatic: Bool)
     
     var errorDescription: String? {
         switch self {
@@ -22,6 +24,11 @@ enum ModSwitchIMEError: LocalizedError {
             return "Invalid configuration detected."
         case .systemError(let error):
             return "System error: \(error.localizedDescription)"
+        case .eventTapCreationFailed(let reason):
+            return "Failed to create event tap: \(reason)"
+        case .eventTapDisabled(let automatic):
+            return automatic ? "Event tap was automatically disabled by the system." 
+                : "Event tap was disabled due to user input timeout."
         }
     }
     
@@ -39,6 +46,11 @@ enum ModSwitchIMEError: LocalizedError {
             return "Please reset preferences to default values."
         case .systemError:
             return "Please try again or restart the application."
+        case .eventTapCreationFailed:
+            return "Check accessibility permissions and try restarting the application."
+        case .eventTapDisabled(let automatic):
+            return automatic ? "The application will attempt to re-enable monitoring automatically." 
+                : "Try clicking slower or check your system's security settings."
         }
     }
 }

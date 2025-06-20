@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>ModSwitchIME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.shun-fu-tech.ModSwitchIME</string>
+    <string>com.nissy.ModSwitchIME</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -17,7 +17,7 @@
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>15.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>

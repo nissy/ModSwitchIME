@@ -16,6 +16,10 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     
+    // 権限要求の重複防止用
+    private var isShowingPermissionAlert = false
+    private var lastPermissionCheckTime = Date(timeIntervalSince1970: 0)
+    
     override init() {
         super.init()
         // Ensure UI operations happen on main thread
@@ -38,17 +42,34 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     
     private func checkAccessibilityPermissions() {
         // Check permissions (without showing prompt)
-        let trusted = AXIsProcessTrusted()
+        let trusted = AccessibilityManager.shared.hasPermission
         Logger.debug("Accessibility permission status: \(trusted)")
         
         if !trusted {
             Logger.info("Accessibility permission not granted")
+            // Don't show alert automatically on startup
         } else {
             Logger.debug("Accessibility permission already granted")
         }
     }
     
     private func showAccessibilityAlert() {
+        // 重複表示を防ぐ
+        guard !isShowingPermissionAlert else {
+            Logger.debug("Permission alert already showing, skipping")
+            return
+        }
+        
+        // 短時間内の連続要求を防ぐ（10秒以内は無視）
+        let now = Date()
+        if now.timeIntervalSince(lastPermissionCheckTime) < 10 {
+            Logger.debug("Permission alert requested too recently, skipping")
+            return
+        }
+        
+        isShowingPermissionAlert = true
+        lastPermissionCheckTime = now
+        
         let alert = NSAlert()
         alert.messageText = "Accessibility Permission Required"
         alert.informativeText = """
@@ -73,19 +94,25 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             // Open system settings
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
+            AccessibilityManager.openSystemPreferences()
         }
         
+        isShowingPermissionAlert = false
         NSApp.setActivationPolicy(.accessory)
     }
     
     private func setupKeyMonitor() {
         keyMonitor = KeyMonitor()
         
+        // Set up error handler
+        keyMonitor?.onError = { [weak self] error in
+            DispatchQueue.main.async {
+                self?.handleKeyMonitorError(error)
+            }
+        }
+        
         // Check accessibility permission status
-        if AXIsProcessTrusted() {
+        if AccessibilityManager.shared.hasPermission {
             Logger.debug("Accessibility permission already trusted, starting KeyMonitor immediately")
             keyMonitor?.start()
             updateMenuState(enabled: true)
@@ -110,7 +137,9 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     @objc private func checkPermission() {
-        if AXIsProcessTrusted() {
+        AccessibilityManager.shared.refreshPermissionStatus()  // Force refresh
+        
+        if AccessibilityManager.shared.hasPermission {
             // Permission already granted
             keyMonitor?.start()
             updateMenuState(enabled: true)
@@ -330,6 +359,38 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         }
         
         alert.runModal()
+    }
+    
+    private func handleKeyMonitorError(_ error: ModSwitchIMEError) {
+        Logger.error("KeyMonitor error: \(error)", category: .keyboard)
+        
+        switch error {
+        case .eventTapCreationFailed:
+            // Show error in menu bar temporarily
+            statusBarItem?.button?.title = "⚠️"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                self?.statusBarItem?.button?.title = "⌘"
+            }
+            
+            // Show alert only for final failure
+            if error.errorDescription?.contains("Maximum retries") == true {
+                showErrorAlert(error: error)
+            }
+            
+        case .eventTapDisabled(let automatic):
+            // Show warning in menu bar
+            statusBarItem?.button?.title = "⚠️"
+            
+            if !automatic {
+                // User input timeout - show brief notification
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                    self?.statusBarItem?.button?.title = "⌘"
+                }
+            }
+            
+        default:
+            showErrorAlert(error: error)
+        }
     }
     
     private func setupSystemNotifications() {

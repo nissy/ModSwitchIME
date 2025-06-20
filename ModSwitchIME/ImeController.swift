@@ -2,8 +2,79 @@ import Foundation
 import Carbon
 import CoreGraphics
 
-class ImeController {
+class ImeController: ErrorHandler {
     private let preferences = Preferences.shared
+    var onError: ((ModSwitchIMEError) -> Void)?
+    
+    // Cache for input sources with size limit
+    private var inputSourceCache: [String: TISInputSource] = [:]
+    private let cacheQueue = DispatchQueue(label: "com.modswitchime.cache", attributes: .concurrent)
+    private let maxCacheSize = 50 // Maximum number of cached input sources
+    
+    // Cache refresh timer
+    private var cacheRefreshTimer: Timer?
+    private let cacheRefreshInterval: TimeInterval = 30.0 // Refresh cache every 30 seconds
+    
+    init() {
+        // Initialize cache
+        refreshInputSourceCache()
+        
+        // Start cache refresh timer
+        startCacheRefreshTimer()
+    }
+    
+    deinit {
+        cacheRefreshTimer?.invalidate()
+    }
+    
+    private func startCacheRefreshTimer() {
+        cacheRefreshTimer = Timer.scheduledTimer(
+            withTimeInterval: cacheRefreshInterval, 
+            repeats: true
+        ) { [weak self] _ in
+            self?.refreshInputSourceCache()
+        }
+    }
+    
+    private func refreshInputSourceCache() {
+        cacheQueue.async(flags: .barrier) {
+            // Clear existing cache to free memory
+            self.inputSourceCache.removeAll(keepingCapacity: false)
+            
+            guard let inputSources = TISCreateInputSourceList(nil, false)?
+                .takeRetainedValue() as? [TISInputSource] else {
+                return
+            }
+            
+            // Only cache actively used input sources to limit memory usage
+            var addedCount = 0
+            for inputSource in inputSources {
+                // Stop if we've reached the cache limit
+                if addedCount >= self.maxCacheSize {
+                    break
+                }
+                
+                if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
+                    let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                    
+                    // Only cache enabled input sources to save memory
+                    if let enabled = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                        let cfBoolean = Unmanaged<CFBoolean>.fromOpaque(enabled).takeUnretainedValue()
+                        let isEnabled = CFBooleanGetValue(cfBoolean)
+                        if isEnabled {
+                            self.inputSourceCache[id] = inputSource
+                            addedCount += 1
+                        }
+                    }
+                }
+            }
+            
+            Logger.debug(
+                "Cache refreshed: \(self.inputSourceCache.count) sources (limit: \(self.maxCacheSize))", 
+                category: .ime
+            )
+        }
+    }
     
     private func switchToEnglish() {
         let englishSources = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"]
@@ -18,7 +89,8 @@ class ImeController {
             }
         }
         
-        Logger.error("Failed to switch to English", category: .ime)
+        let error = ModSwitchIMEError.inputSourceNotFound("English input source")
+        handleError(error)
     }
     
     func forceAscii() {
@@ -39,10 +111,12 @@ class ImeController {
                 do {
                     try selectInputSource(targetIME)
                 } catch {
-                    Logger.error("Failed to switch to \(targetIME): \(error)", category: .ime)
+                    let imeError = ModSwitchIMEError.inputSourceNotFound(targetIME)
+                    handleError(imeError)
                 }
             } else {
-                Logger.warning("No native IME configured", category: .ime)
+                let error = ModSwitchIMEError.invalidConfiguration
+                handleError(error)
             }
         }
     }
@@ -54,14 +128,13 @@ class ImeController {
             do {
                 try selectInputSource(imeId)
             } catch {
-                Logger.error("Failed to switch to \(imeId): \(error)", category: .ime)
+                let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
+                handleError(imeError)
             }
         } else {
             Logger.warning("Empty IME ID provided", category: .ime)
         }
     }
-    
-    private var inputSourceCache: [String: TISInputSource] = [:]
     
     func selectInputSource(_ inputSourceID: String) throws {
         // Get current input source
@@ -72,83 +145,92 @@ class ImeController {
             return
         }
         
-        // Check cache first
-        if let cachedSource = inputSourceCache[inputSourceID] {
-            
-            // Apply workaround when switching within the same IME family
-            let currentFamily = getIMEFamily(currentSource)
-            let targetFamily = getIMEFamily(inputSourceID)
-            
-            if currentFamily == targetFamily && currentFamily != "com.apple.keylayout" {
-                // Switch to English first, then to target mode
-                if let englishSource = inputSourceCache["com.apple.keylayout.ABC"] {
-                    TISSelectInputSource(englishSource)
-                    // Wait a bit
-                    Thread.sleep(forTimeInterval: 0.05)
-                }
-            }
-            
-            TISSelectInputSource(cachedSource)
-            
-            // Verify input source after change
-            verifyInputSourceSwitch(targetID: inputSourceID, source: cachedSource)
-            return
+        // Get cached source
+        let cachedSource = cacheQueue.sync {
+            return inputSourceCache[inputSourceID]
         }
         
-        guard let inputSources = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] else {
-            throw ModSwitchIMEError.systemError(
-                NSError(
-                    domain: "ModSwitchIME", 
-                    code: 1, 
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to get input source list"]
+        if let source = cachedSource {
+            // Optimized switching logic
+            try performSwitch(from: currentSource, to: inputSourceID, source: source)
+        } else {
+            // Source not in cache, add it if we have room
+            if let newSource = findInputSource(inputSourceID) {
+                cacheQueue.async(flags: .barrier) {
+                    // Check cache size before adding
+                    if self.inputSourceCache.count < self.maxCacheSize {
+                        self.inputSourceCache[inputSourceID] = newSource
+                    } else {
+                        // Cache is full, remove least recently used (simple FIFO for now)
+                        if let firstKey = self.inputSourceCache.keys.first {
+                            self.inputSourceCache.removeValue(forKey: firstKey)
+                        }
+                        self.inputSourceCache[inputSourceID] = newSource
+                    }
+                }
+                try performSwitch(from: currentSource, to: inputSourceID, source: newSource)
+            } else {
+                throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
+            }
+        }
+    }
+    
+    private func performSwitch(from currentID: String, to targetID: String, source: TISInputSource) throws {
+        let currentFamily = getIMEFamily(currentID)
+        let targetFamily = getIMEFamily(targetID)
+        
+        // Optimized workaround for same IME family switching
+        if currentFamily == targetFamily && currentFamily != "com.apple.keylayout" {
+            // Use a faster approach: deactivate current then activate target
+            if let currentSource = cacheQueue.sync(execute: { inputSourceCache[currentID] }) {
+                TISDeselectInputSource(currentSource)
+            }
+            
+            // Small delay using nanosleep instead of Thread.sleep
+            var timespec = timespec(tv_sec: 0, tv_nsec: 10_000_000) // 10ms
+            nanosleep(&timespec, nil)
+        }
+        
+        // Select the target input source
+        TISSelectInputSource(source)
+        
+        // Faster verification without async dispatch
+        verifyInputSourceSwitchSync(targetID: targetID, source: source)
+    }
+    
+    private func verifyInputSourceSwitchSync(targetID: String, source: TISInputSource) {
+        // Quick sync verification with minimal delay
+        var timespec = timespec(tv_sec: 0, tv_nsec: 20_000_000) // 20ms
+        nanosleep(&timespec, nil)
+        
+        let newSource = getCurrentInputSource()
+        
+        if newSource != targetID {
+            Logger.warning("First switch attempt failed. Expected: \(targetID), Actual: \(newSource)", category: .ime)
+            
+            // Immediate retry
+            TISSelectInputSource(source)
+            
+            // Final verification after retry
+            nanosleep(&timespec, nil)
+            let finalSource = getCurrentInputSource()
+            
+            if finalSource != targetID {
+                Logger.error(
+                    "Failed to switch after retry. Expected: \(targetID), Actual: \(finalSource)", 
+                    category: .ime
                 )
-            )
-        }
-        
-        var found = false
-        for inputSource in inputSources {
-            if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
-                let cfStringRef = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue()
-                let sourceIDString = String(cfStringRef)
-                
-                // Cache all sources for future use
-                inputSourceCache[sourceIDString] = inputSource
-                
-                if sourceIDString == inputSourceID {
-                    TISSelectInputSource(inputSource)
-                    found = true
-                    
-                    // Verify input source after change
-                    verifyInputSourceSwitch(targetID: inputSourceID, source: inputSource)
-                }
             }
-        }
-        
-        if !found {
-            throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
         }
     }
     
     // Helper function to reduce complexity
     private func getIMEFamily(_ sourceID: String) -> String {
-        return sourceID.components(separatedBy: ".").prefix(3).joined(separator: ".")
-    }
-    
-    // Helper function to verify input source switch
-    private func verifyInputSourceSwitch(targetID: String, source: TISInputSource) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let newSource = self.getCurrentInputSource()
-            
-            if newSource != targetID {
-                Logger.error("Failed to switch. Expected: \(targetID), Actual: \(newSource)", category: .ime)
-                
-                // Retry for same IME family
-                let targetFamily = self.getIMEFamily(targetID)
-                if targetFamily != "com.apple.keylayout" {
-                    TISSelectInputSource(source)
-                }
-            }
+        let components = sourceID.components(separatedBy: ".")
+        if components.count >= 3 {
+            return components.prefix(3).joined(separator: ".")
         }
+        return sourceID
     }
     
     func getCurrentInputSource() -> String {
@@ -164,5 +246,31 @@ class ImeController {
         }
         
         return "Unknown"
+    }
+    
+    // Helper function to find a specific input source
+    private func findInputSource(_ inputSourceID: String) -> TISInputSource? {
+        guard let inputSources = TISCreateInputSourceList(nil, false)?
+            .takeRetainedValue() as? [TISInputSource] else {
+            return nil
+        }
+        
+        for inputSource in inputSources {
+            if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
+                let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                if id == inputSourceID {
+                    return inputSource
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    // MARK: - ErrorHandler
+    
+    func handleError(_ error: ModSwitchIMEError) {
+        logError(error, category: .ime)
+        onError?(error)
     }
 }

@@ -1,0 +1,265 @@
+import Foundation
+import Carbon
+
+// MARK: - InputSourceManager
+
+/// Manages input source discovery and categorization
+struct InputSourceManager {
+    
+    // MARK: - Input Source Discovery
+    
+    /// Check if an IME ID appears to be a child of a parent IME
+    static func isChildIME(_ id: String) -> Bool {
+        // Common patterns for child IMEs across different input methods:
+        // 1. Contains a mode suffix after the main IME name
+        // 2. Has multiple dots in the identifier indicating hierarchy
+        
+        let modePatterns = [
+            // Japanese modes
+            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            // Chinese modes
+            ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
+            // Korean modes
+            ".Hangul", ".Hanja", ".2SetKorean", ".3SetKorean",
+            // Other common modes
+            ".ABC", ".QWERTY", ".Dvorak", ".Colemak"
+        ]
+        
+        // Check if the ID contains any mode pattern
+        for pattern in modePatterns where id.contains(pattern) {
+            // Additional check: ensure it has a parent prefix (multiple dots)
+            let dotCount = id.filter { $0 == "." }.count
+            if dotCount >= 3 { // e.g., com.apple.inputmethod.Kotoeri.Japanese
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// Get the parent IME ID from a child IME ID
+    static func getParentIMEId(_ childId: String) -> String? {
+        // Try to extract parent ID by removing the last component after the last dot
+        // that matches a known mode pattern
+        let modePatterns = [
+            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
+            ".Hangul", ".Hanja", ".2SetKorean", ".3SetKorean",
+            ".ABC", ".QWERTY", ".Dvorak", ".Colemak"
+        ]
+        
+        for pattern in modePatterns {
+            if let range = childId.range(of: pattern) {
+                return String(childId[..<range.lowerBound])
+            }
+        }
+        
+        return nil
+    }
+    
+    /// Get the list of actually enabled input sources from system preferences
+    static func getSystemEnabledInputSourceIDs() -> Set<String> {
+        var enabledIDs = Set<String>()
+        
+        // Method 1: Check HIToolbox preferences for enabled input sources
+        let hiToolboxDefaults = UserDefaults(suiteName: "com.apple.HIToolbox")
+        if let appleEnabledInputSources = hiToolboxDefaults?.object(
+            forKey: "AppleEnabledInputSources"
+        ) as? [[String: Any]] {
+            Logger.debug("Found \(appleEnabledInputSources.count) sources in HIToolbox preferences", category: .ime)
+            for source in appleEnabledInputSources {
+                Logger.debug("HIToolbox source: \(source)", category: .ime)
+                if let bundleID = source["Bundle ID"] as? String {
+                    enabledIDs.insert(bundleID)
+                } else if let keyboardLayoutName = source["KeyboardLayout Name"] as? String {
+                    // Handle keyboard layouts like ABC
+                    if keyboardLayoutName == "ABC" {
+                        enabledIDs.insert("com.apple.keylayout.ABC")
+                    }
+                }
+            }
+        } else {
+            Logger.debug("No AppleEnabledInputSources found in HIToolbox preferences", category: .ime)
+        }
+        
+        // Method 2: Also check TISCreateInputSourceList with includeAllInstalled = false
+        // This gives us the actually active input sources
+        if let enabledList = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] {
+            Logger.debug("TISCreateInputSourceList(false) returned \(enabledList.count) sources", category: .ime)
+            for inputSource in enabledList {
+                if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
+                    let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+                    enabledIDs.insert(id)
+                    
+                    // Also check if this source is actually enabled
+                    var isEnabled = false
+                    if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                        isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+                    }
+                    Logger.debug("TIS enabled list: \(id), enabled flag: \(isEnabled)", category: .ime)
+                }
+            }
+        }
+        
+        Logger.debug("Total system enabled input sources: \(enabledIDs.count) - \(enabledIDs)", category: .ime)
+        return enabledIDs
+    }
+    
+    static func getAllInputSources(includeDisabled: Bool = false) -> [Preferences.InputSource] {
+        var sources: [Preferences.InputSource] = []
+        
+        // Choose source list based on includeDisabled flag
+        let includeAllInstalled = includeDisabled
+        guard let inputSourcesList = TISCreateInputSourceList(nil, includeAllInstalled)?.takeRetainedValue(),
+              let inputSources = inputSourcesList as? [TISInputSource] else {
+            return sources
+        }
+        
+        for inputSource in inputSources {
+            // Get source ID
+            guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
+                continue
+            }
+            let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
+            
+            // Check if it's selectable
+            if let selectableRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
+                let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
+                if !CFBooleanGetValue(selectable) {
+                    continue
+                }
+            }
+            
+            // Get category
+            guard let categoryRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) else {
+                continue
+            }
+            let category = Unmanaged<CFString>.fromOpaque(categoryRef).takeUnretainedValue() as String
+            
+            // Only include keyboard input sources (not palette input sources)
+            guard category == (kTISCategoryKeyboardInputSource as String) else {
+                continue
+            }
+            
+            // Get enabled state
+            var isEnabled = false
+            if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
+                isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+            }
+            
+            // Get localized name
+            var name = id
+            if let localizedNameRef = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
+                name = Unmanaged<CFString>.fromOpaque(localizedNameRef).takeUnretainedValue() as String
+            }
+            
+            // Debug log for all IMEs
+            Logger.debug("IME found: \(id), name: \(name), enabled: \(isEnabled), selectable: \(true)", category: .ime)
+            
+            // When includeDisabled is false, TISCreateInputSourceList(nil, false) 
+            // should already return only enabled sources.
+            // No additional filtering needed.
+            
+            sources.append(Preferences.InputSource(sourceId: id, localizedName: name, isEnabled: isEnabled))
+        }
+        
+        return sources.sorted { $0.localizedName < $1.localizedName }
+    }
+    
+    // MARK: - Language Detection
+    
+    static func getInputSourceLanguage(_ sourceId: String) -> String {
+        if isAsianLanguage(sourceId) {
+            return detectAsianLanguage(sourceId)
+        } else if isMiddleEasternLanguage(sourceId) {
+            return detectMiddleEasternLanguage(sourceId)
+        } else if isIndicLanguage(sourceId) {
+            return "Indic Languages"
+        } else if isCyrillicLanguage(sourceId) {
+            return "Cyrillic Scripts"
+        } else if isEuropeanLanguage(sourceId) {
+            return "European Languages"
+        } else {
+            return "English & Others"
+        }
+    }
+    
+    // Helper function for Asian languages
+    private static func isAsianLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Japanese") || sourceId.contains("Kotoeri") ||
+               sourceId.contains("ATOK") || sourceId.contains("atok") ||
+               sourceId.contains("com.google.inputmethod.Japanese") ||
+               sourceId.contains("Chinese") || sourceId.contains("TCIM") ||
+               sourceId.contains("SCIM") || sourceId.contains("Pinyin") ||
+               sourceId.contains("Cangjie") || sourceId.contains("Zhuyin") ||
+               sourceId.contains("Wubi") || sourceId.contains("Stroke") ||
+               sourceId.contains("Korean") || sourceId.contains("Hangul") ||
+               sourceId.contains("Vietnamese") || sourceId.contains("Telex") ||
+               sourceId.contains("VNI") || sourceId.contains("VIQR") ||
+               sourceId.contains("Thai")
+    }
+    
+    private static func detectAsianLanguage(_ sourceId: String) -> String {
+        if sourceId.contains("Japanese") || sourceId.contains("Kotoeri") ||
+           sourceId.contains("ATOK") || sourceId.contains("atok") ||
+           sourceId.contains("com.google.inputmethod.Japanese") {
+            return "Japanese"
+        } else if sourceId.contains("Chinese") || sourceId.contains("TCIM") ||
+                  sourceId.contains("SCIM") || sourceId.contains("Pinyin") ||
+                  sourceId.contains("Cangjie") || sourceId.contains("Zhuyin") ||
+                  sourceId.contains("Wubi") || sourceId.contains("Stroke") {
+            return "Chinese"
+        } else if sourceId.contains("Korean") || sourceId.contains("Hangul") {
+            return "Korean"
+        } else if sourceId.contains("Vietnamese") || sourceId.contains("Telex") ||
+                  sourceId.contains("VNI") || sourceId.contains("VIQR") {
+            return "Vietnamese"
+        } else if sourceId.contains("Thai") {
+            return "Thai"
+        } else {
+            return "Asian Language"
+        }
+    }
+    
+    // Helper function for Middle Eastern languages
+    private static func isMiddleEasternLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Arabic") || sourceId.contains("Hebrew")
+    }
+    
+    private static func detectMiddleEasternLanguage(_ sourceId: String) -> String {
+        if sourceId.contains("Arabic") {
+            return "Arabic"
+        } else if sourceId.contains("Hebrew") {
+            return "Hebrew"
+        } else {
+            return "Middle Eastern Language"
+        }
+    }
+    
+    // Helper function for Indic languages
+    private static func isIndicLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Hindi") || sourceId.contains("Devanagari") ||
+               sourceId.contains("Tamil") || sourceId.contains("Telugu") ||
+               sourceId.contains("Bengali") || sourceId.contains("Bangla") ||
+               sourceId.contains("Gujarati") || sourceId.contains("Kannada") ||
+               sourceId.contains("Malayalam") || sourceId.contains("Marathi") ||
+               sourceId.contains("Punjabi") || sourceId.contains("Sanskrit")
+    }
+    
+    // Helper function for Cyrillic languages
+    private static func isCyrillicLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("Russian") || sourceId.contains("Ukrainian") ||
+               sourceId.contains("Bulgarian") || sourceId.contains("Serbian") ||
+               sourceId.contains("Macedonian") || sourceId.contains("Belarusian")
+    }
+    
+    // Helper function for European languages
+    private static func isEuropeanLanguage(_ sourceId: String) -> Bool {
+        return sourceId.contains("French") || sourceId.contains("German") ||
+               sourceId.contains("Spanish") || sourceId.contains("Italian") ||
+               sourceId.contains("Portuguese") || sourceId.contains("Dutch") ||
+               sourceId.contains("Polish") || sourceId.contains("Czech") ||
+               sourceId.contains("Hungarian") || sourceId.contains("Romanian") ||
+               sourceId.contains("Greek") || sourceId.contains("Turkish")
+    }
+}

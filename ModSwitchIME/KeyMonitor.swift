@@ -11,15 +11,20 @@ class KeyMonitor {
     private var isRunning = false
     private var cancellables = Set<AnyCancellable>()
     
+    // Error handling and retry
+    private var retryCount = 0
+    private let maxRetries = 5
+    private var retryTimer: Timer?
+    var onError: ((ModSwitchIMEError) -> Void)?
+    
+    // Performance optimization cache
+    private var cachedIMEMappings: [ModifierKey: String] = [:]
+    private var lastCacheUpdate: CFAbsoluteTime = 0
+    private let cacheValidityDuration: CFAbsoluteTime = 1.0
+    
     // Track modifier key states
     private var modifierKeyStates: [ModifierKey: (isDown: Bool, downTime: CFAbsoluteTime)] = [:]
     private var otherKeyPressed = false
-    
-    // Legacy support for old code
-    private var leftCmdDownTime: CFAbsoluteTime = 0
-    private var rightCmdDownTime: CFAbsoluteTime = 0
-    private var leftCmdDown = false
-    private var rightCmdDown = false
     
     // アイドルタイマー関連
     private var idleTimer: Timer?
@@ -35,6 +40,18 @@ class KeyMonitor {
         return isRunning
     }
     
+    // Public method to check modifier key state
+    func isModifierKeyPressed(_ key: ModifierKey) -> Bool {
+        return modifierKeyStates[key]?.isDown ?? false
+    }
+    
+    // Get all pressed modifier keys
+    var pressedModifierKeys: [ModifierKey] {
+        return modifierKeyStates.compactMap { key, state in
+            state.isDown ? key : nil
+        }
+    }
+    
     func start() {
         // 既に実行中の場合はスキップ
         if isRunning {
@@ -44,10 +61,9 @@ class KeyMonitor {
         Logger.debug("KeyMonitor.start() called", category: .keyboard)
         
         // アクセシビリティ権限を確認
-        let trusted = AXIsProcessTrusted()
-        
-        if !trusted {
+        if !AccessibilityManager.shared.hasPermission {
             Logger.warning("KeyMonitor cannot start without accessibility permission", category: .keyboard)
+            // Don't show alert from KeyMonitor - let MenuBarApp handle it
             return
         }
         
@@ -67,7 +83,8 @@ class KeyMonitor {
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
-            Logger.error("Failed to create event tap", category: .keyboard)
+            Logger.error("Failed to create event tap (attempt \(retryCount + 1)/\(maxRetries))", category: .keyboard)
+            handleEventTapCreationFailure()
             return
         }
         
@@ -77,7 +94,9 @@ class KeyMonitor {
         CGEvent.tapEnable(tap: eventTap, enable: true)
         
         isRunning = true
-        Logger.info("KeyMonitor started", category: .keyboard)
+        retryCount = 0  // Reset retry count on success
+        cancelRetryTimer()
+        Logger.info("KeyMonitor started successfully", category: .keyboard)
         
         // アイドルタイマーを開始
         startIdleTimer()
@@ -102,6 +121,9 @@ class KeyMonitor {
         // アイドルタイマーを停止
         stopIdleTimer()
         
+        // リトライタイマーを停止
+        cancelRetryTimer()
+        
         // 監視をキャンセル
         cancellables.removeAll()
         
@@ -109,6 +131,10 @@ class KeyMonitor {
     }
     
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Create a copy of the event to avoid modifying the original
+        guard let eventCopy = event.copy() else {
+            return Unmanaged.passUnretained(event)
+        }
         
         // アクティビティを記録
         let previousActivityTime = lastActivityTime
@@ -128,40 +154,48 @@ class KeyMonitor {
         
         switch type {
         case .flagsChanged:
-            handleFlagsChanged(event: event)
+            handleFlagsChanged(event: eventCopy)
         case .tapDisabledByTimeout:
             Logger.error("Event tap disabled by timeout", category: .keyboard)
             // イベントタップを再有効化
             if let eventTap = eventTap {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
+                onError?(.eventTapDisabled(automatic: true))
             }
         case .tapDisabledByUserInput:
             Logger.error("Event tap disabled by user input", category: .keyboard)
+            onError?(.eventTapDisabled(automatic: false))
+            // Attempt to re-enable after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                if let eventTap = self?.eventTap {
+                    CGEvent.tapEnable(tap: eventTap, enable: true)
+                }
+            }
         default:
             break
         }
         
+        // Return the original event unchanged
         return Unmanaged.passUnretained(event)
     }
     
     private func handleFlagsChanged(event: CGEvent) {
-        let flags = event.flags
+        // Store event data in local variables for privacy
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let flags = event.flags
         
-        // Privacy: Clear the event data after reading
-        defer {
-            // Ensure no sensitive data remains in memory
-            event.setIntegerValueField(.keyboardEventKeycode, value: 0)
-        }
+        // Privacy: Clear event data immediately after reading
+        event.setIntegerValueField(.keyboardEventKeycode, value: 0)
+        event.flags = CGEventFlags(rawValue: 0)
         
         // Identify which modifier key based on keyCode
         guard let modifierKey = ModifierKey.from(keyCode: keyCode) else {
-            return
+            return  // Early exit for non-modifier keys
         }
         
-        // Check if this key has an IME mapping
-        guard let targetIME = preferences.getIME(for: modifierKey) else {
-            return
+        // Check IME mapping with cache
+        guard let targetIME = getCachedIME(for: modifierKey) else {
+            return  // Early exit if no IME mapping
         }
         
         // Check if the corresponding flag is set
@@ -169,6 +203,11 @@ class KeyMonitor {
         
         // Get current state
         let currentState = modifierKeyStates[modifierKey] ?? (isDown: false, downTime: 0)
+        
+        // Skip if state hasn't changed
+        if isKeyDown == currentState.isDown {
+            return  // Early exit for duplicate events
+        }
         
         // Check if other modifier keys are pressed (for combination detection)
         let otherModifiersPressed = flags.intersection([.maskControl, .maskShift, .maskAlternate, .maskCommand])
@@ -192,9 +231,6 @@ class KeyMonitor {
         modifierKeyStates[modifierKey] = (isDown: true, downTime: CFAbsoluteTimeGetCurrent())
         otherKeyPressed = otherModifiersPressed
         Logger.debug("\(modifierKey.displayName) down", category: .keyboard)
-        
-        // Update legacy state for command keys
-        updateLegacyCommandState(modifierKey: modifierKey, isDown: true)
     }
     
     // Helper function for key up handling
@@ -205,9 +241,6 @@ class KeyMonitor {
         if !otherKeyPressed && !otherModifiersPressed {
             triggerIMESwitch(modifierKey: modifierKey, downTime: currentState.downTime, targetIME: targetIME)
         }
-        
-        // Update legacy state for command keys
-        updateLegacyCommandState(modifierKey: modifierKey, isDown: false)
     }
     
     // Helper function for IME switching logic
@@ -221,24 +254,6 @@ class KeyMonitor {
         } else {
             Logger.debug("\(modifierKey.displayName) triggered (instant)", category: .keyboard)
             imeController.switchToSpecificIME(targetIME)
-        }
-    }
-    
-    // Helper function for legacy command state
-    private func updateLegacyCommandState(modifierKey: ModifierKey, isDown: Bool) {
-        switch modifierKey {
-        case .leftCommand:
-            leftCmdDown = isDown
-            if isDown {
-                leftCmdDownTime = CFAbsoluteTimeGetCurrent()
-            }
-        case .rightCommand:
-            rightCmdDown = isDown
-            if isDown {
-                rightCmdDownTime = CFAbsoluteTimeGetCurrent()
-            }
-        default:
-            break
         }
     }
     
@@ -299,7 +314,10 @@ class KeyMonitor {
         let currentTime = CFAbsoluteTimeGetCurrent()
         let idleTime = currentTime - lastActivityTime
         
-        Logger.debug("Checking idle timeout: idle for \(idleTime)s, timeout: \(preferences.idleTimeout)s", category: .keyboard)
+        Logger.debug(
+            "Checking idle timeout: idle for \(idleTime)s, timeout: \(preferences.idleTimeout)s",
+            category: .keyboard
+        )
         
         if idleTime >= preferences.idleTimeout {
             if let idleIME = preferences.idleReturnIME {
@@ -351,6 +369,13 @@ class KeyMonitor {
                 }
             }
             .store(in: &cancellables)
+        
+        // Listen for any IME mapping changes to invalidate cache
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .sink { [weak self] _ in
+                self?.invalidateIMECache()
+            }
+            .store(in: &cancellables)
     }
     
     private func handleIdleEnabledChange(_ enabled: Bool) {
@@ -366,5 +391,64 @@ class KeyMonitor {
             Logger.debug("Stopping idle timer", category: .keyboard)
             stopIdleTimer()
         }
+    }
+    
+    // MARK: - Error Handling and Retry
+    
+    private func handleEventTapCreationFailure() {
+        let error = ModSwitchIMEError.eventTapCreationFailed(
+            reason: retryCount < maxRetries ? "Attempting retry..." : "Maximum retries exceeded"
+        )
+        onError?(error)
+        
+        if retryCount < maxRetries {
+            retryCount += 1
+            let delay = Double(retryCount) * 2.0 // Exponential backoff
+            
+            Logger.info("Scheduling retry #\(retryCount) in \(delay) seconds", category: .keyboard)
+            
+            retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+                Logger.info("Retrying event tap creation...", category: .keyboard)
+                self.start()
+            }
+        } else {
+            Logger.error("Failed to create event tap after \(maxRetries) attempts", category: .keyboard)
+        }
+    }
+    
+    private func cancelRetryTimer() {
+        retryTimer?.invalidate()
+        retryTimer = nil
+    }
+    
+    // MARK: - Performance Optimization
+    
+    private func getCachedIME(for key: ModifierKey) -> String? {
+        let now = CFAbsoluteTimeGetCurrent()
+        
+        // Check if cache is still valid
+        if now - lastCacheUpdate > cacheValidityDuration {
+            refreshIMECache()
+        }
+        
+        return cachedIMEMappings[key]
+    }
+    
+    private func refreshIMECache() {
+        cachedIMEMappings.removeAll()
+        
+        // Cache all IME mappings
+        for key in ModifierKey.allCases {
+            if let ime = preferences.getIME(for: key) {
+                cachedIMEMappings[key] = ime
+            }
+        }
+        
+        lastCacheUpdate = CFAbsoluteTimeGetCurrent()
+    }
+    
+    private func invalidateIMECache() {
+        lastCacheUpdate = 0  // Force refresh on next access
     }
 }
