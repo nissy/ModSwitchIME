@@ -262,15 +262,17 @@ dmg: package ## Create DMG for distribution
 	@rm -rf "$(PROD_BUILD_DIR)/dmg_temp"
 	@mkdir -p "$(PROD_BUILD_DIR)/dmg_temp"
 	@cp -R "$(PROD_BUILD_DIR)/$(PROJECT_NAME).app" "$(PROD_BUILD_DIR)/dmg_temp/"
+	@ln -s /Applications "$(PROD_BUILD_DIR)/dmg_temp/Applications"
 	@if command -v create-dmg >/dev/null 2>&1; then \
 		create-dmg \
 			--volname "$(PROJECT_NAME)" \
 			--window-pos 200 120 \
-			--window-size 800 600 \
+			--window-size 600 400 \
 			--icon-size 100 \
-			--icon "$(PROJECT_NAME).app" 200 190 \
+			--icon "$(PROJECT_NAME).app" 150 200 \
 			--hide-extension "$(PROJECT_NAME).app" \
-			--app-drop-link 600 185 \
+			--app-drop-link 450 200 \
+			--background-color "FFFFFF" \
 			"$(DMG_PATH)" \
 			"$(PROD_BUILD_DIR)/dmg_temp/"; \
 	else \
