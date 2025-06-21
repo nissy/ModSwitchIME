@@ -382,7 +382,7 @@ class ErrorHandlingTests: XCTestCase {
         preferences.motherImeId = ""
         let newPreferences = Preferences.createForTesting()
         
-        // Then: Should use default CJK detection
-        XCTAssertFalse(newPreferences.motherImeId.isEmpty, "Should recover with default CJK detection")
+        // Then: Should reset to empty state (no automatic detection)
+        XCTAssertEqual(newPreferences.motherImeId, "", "Should reset to empty state without automatic detection")
     }
 }

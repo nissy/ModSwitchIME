@@ -67,12 +67,8 @@ class PreferencesViewTests: XCTestCase {
         let testPreferences = Preferences.createForTesting()
         
         // When: Initial state
-        // Then: Should have a default IME selected
-        XCTAssertFalse(testPreferences.motherImeId.isEmpty, "Should have default mother IME ID")
-        XCTAssertTrue(testPreferences.motherImeId.contains("inputmethod") || 
-                     testPreferences.motherImeId.contains("Kotoeri") ||
-                     testPreferences.motherImeId.contains("keylayout"), 
-                     "Default IME should be a valid input method, got: \(testPreferences.motherImeId)")
+        // Then: Should have empty motherImeId (no automatic detection)
+        XCTAssertEqual(testPreferences.motherImeId, "", "Should have empty mother IME ID by default")
     }
     
     func testMotherImeIdPersistence() {

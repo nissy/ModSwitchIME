@@ -142,12 +142,18 @@ class Preferences: ObservableObject {
         // Clear test-related UserDefaults to ensure clean state
         let keysToRemove = [
             "idleOffEnabled", "idleTimeout", "launchAtLogin", "motherImeId",
-            "cmdKeyTimeout", "cmdKeyTimeoutEnabled", "idleReturnIME"
+            "cmdKeyTimeout", "cmdKeyTimeoutEnabled", "idleReturnIME",
+            "modifierKeyMappings", "modifierKeyEnabled"
         ]
         for key in keysToRemove {
             UserDefaults.standard.removeObject(forKey: key)
         }
         UserDefaults.standard.synchronize()
+        return Preferences()
+    }
+    
+    // For testing migration scenarios - doesn't clear UserDefaults
+    internal static func createForMigrationTesting() -> Preferences {
         return Preferences()
     }
     
@@ -224,112 +230,6 @@ class Preferences: ObservableObject {
         // Load modifier key mappings
         self.modifierKeyMappings = loadModifierKeyMappings()
         self.modifierKeyEnabled = loadModifierKeyEnabled()
-        
-        // Migrate old motherImeId to right command if mappings are empty
-        if modifierKeyMappings.isEmpty && !motherImeId.isEmpty {
-            modifierKeyMappings[.rightCommand] = motherImeId
-        } else if motherImeId.isEmpty {
-            motherImeId = detectDefaultCJKInputSource()
-            modifierKeyMappings[.rightCommand] = motherImeId
-        }
-        
-        // Set default for left command to English
-        if modifierKeyMappings[.leftCommand] == nil {
-            modifierKeyMappings[.leftCommand] = "com.apple.keylayout.ABC"
-        }
-    }
-    
-    private func detectDefaultCJKInputSource() -> String {
-        // Ensure TIS API calls are on main thread
-        if Thread.isMainThread {
-            return detectDefaultCJKInputSourceSync()
-        } else {
-            return DispatchQueue.main.sync {
-                return detectDefaultCJKInputSourceSync()
-            }
-        }
-    }
-    
-    private func detectDefaultCJKInputSourceSync() -> String {
-        // Get list of all input sources
-        guard let inputSources = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] else {
-            return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese" // Default fallback
-        }
-        
-        // Try to find CJK input source from system
-        if let found = findFirstCJKInputSource(from: inputSources) {
-            return found
-        }
-        
-        // If no CJK input source found, try to detect by current locale
-        return getDefaultCJKInputSourceByLocale()
-    }
-    
-    private func findFirstCJKInputSource(from inputSources: [TISInputSource]) -> String? {
-        // Priority list of CJK input methods
-        let cjkPrefixes = [
-            "com.apple.inputmethod.Kotoeri",     // Japanese
-            "com.apple.inputmethod.SCIM",         // Simplified Chinese
-            "com.apple.inputmethod.TCIM",         // Traditional Chinese
-            "com.apple.inputmethod.Korean",       // Korean
-            "com.apple.inputmethod.ChineseHandwriting",
-            "com.apple.inputmethod.VietnameseIM"
-        ]
-        
-        var foundInputSource: String?
-        
-        // Process input sources within autoreleasepool to manage memory
-        autoreleasepool {
-            for inputSource in inputSources {
-                guard let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) else {
-                    continue
-                }
-                
-                let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
-                
-                // Check if it's a CJK input method
-                for prefix in cjkPrefixes where id.hasPrefix(prefix) {
-                    // Additional check: ensure it's selectable
-                    if let selectableRef = TISGetInputSourceProperty(
-                        inputSource, 
-                        kTISPropertyInputSourceIsSelectCapable
-                    ) {
-                        let selectable = Unmanaged<CFBoolean>.fromOpaque(selectableRef).takeUnretainedValue()
-                        if CFBooleanGetValue(selectable) {
-                            foundInputSource = id
-                            break
-                        }
-                    }
-                }
-                if foundInputSource != nil { break }
-            }
-        } // End autoreleasepool
-        
-        return foundInputSource
-    }
-    
-    private func getDefaultCJKInputSourceByLocale() -> String {
-        let currentLocale = Locale.current
-        
-        // Use macOS 13+ API (we're targeting macOS 15.0)
-        let languageCode = currentLocale.language.languageCode?.identifier ?? ""
-        
-        switch languageCode {
-        case "ja":
-            return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
-        case "zh":
-            let regionCode = currentLocale.region?.identifier ?? ""
-            if regionCode == "TW" || regionCode == "HK" {
-                return "com.apple.inputmethod.TCIM.Cangjie"
-            } else {
-                return "com.apple.inputmethod.SCIM.ITABC"
-            }
-        case "ko":
-            return "com.apple.inputmethod.Korean.2SetKorean"
-        default:
-            // Final fallback
-            return "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
-        }
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
