@@ -127,8 +127,10 @@ build: ## Build production version
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
 		TEST_BUNDLE_IDENTIFIER="$(TEST_BUNDLE_IDENTIFIER)" \
-		CODE_SIGN_STYLE=Automatic \
-		OTHER_CODE_SIGN_FLAGS="--timestamp" \
+		CODE_SIGN_STYLE=Manual \
+		CODE_SIGN_IDENTITY="Developer ID Application: Yoshihiko Nishida (R7LKF73J2W)" \
+		OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" \
+		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
 		build
 	@echo "$(GREEN)Copying to prod directory...$(NC)"
 	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_RELEASE) -derivedDataPath $(PROD_BUILD_DIR)/DerivedData -showBuildSettings DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
@@ -214,8 +216,10 @@ archive: ## Create xcarchive with Developer ID signing
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
 		TEST_BUNDLE_IDENTIFIER="$(TEST_BUNDLE_IDENTIFIER)" \
-		CODE_SIGN_STYLE=Automatic \
-		OTHER_CODE_SIGN_FLAGS="--timestamp" \
+		CODE_SIGN_STYLE=Manual \
+		CODE_SIGN_IDENTITY="Developer ID Application: Yoshihiko Nishida (R7LKF73J2W)" \
+		OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" \
+		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
 		archive
 	@echo "$(GREEN)Archive created at: $(ARCHIVE_PATH)$(NC)"
 
@@ -234,7 +238,9 @@ package: archive ## Export app from archive with Developer ID
 	@echo '    <key>signingCertificate</key>' >> $(EXPORT_PATH)/exportOptions.plist
 	@echo '    <string>Developer ID Application</string>' >> $(EXPORT_PATH)/exportOptions.plist
 	@echo '    <key>signingStyle</key>' >> $(EXPORT_PATH)/exportOptions.plist
-	@echo '    <string>automatic</string>' >> $(EXPORT_PATH)/exportOptions.plist
+	@echo '    <string>manual</string>' >> $(EXPORT_PATH)/exportOptions.plist
+	@echo '    <key>hardened-runtime</key>' >> $(EXPORT_PATH)/exportOptions.plist
+	@echo '    <true/>' >> $(EXPORT_PATH)/exportOptions.plist
 	@echo '</dict>' >> $(EXPORT_PATH)/exportOptions.plist
 	@echo '</plist>' >> $(EXPORT_PATH)/exportOptions.plist
 	xcodebuild -exportArchive \
@@ -252,6 +258,10 @@ package: archive ## Export app from archive with Developer ID
 
 dmg: package ## Create DMG for distribution
 	@echo "$(BLUE)Creating DMG...$(NC)"
+	@echo "$(BLUE)Preparing DMG contents...$(NC)"
+	@rm -rf "$(PROD_BUILD_DIR)/dmg_temp"
+	@mkdir -p "$(PROD_BUILD_DIR)/dmg_temp"
+	@cp -R "$(PROD_BUILD_DIR)/$(PROJECT_NAME).app" "$(PROD_BUILD_DIR)/dmg_temp/"
 	@if command -v create-dmg >/dev/null 2>&1; then \
 		create-dmg \
 			--volname "$(PROJECT_NAME)" \
@@ -262,12 +272,13 @@ dmg: package ## Create DMG for distribution
 			--hide-extension "$(PROJECT_NAME).app" \
 			--app-drop-link 600 185 \
 			"$(DMG_PATH)" \
-			"$(PROD_BUILD_DIR)/"; \
+			"$(PROD_BUILD_DIR)/dmg_temp/"; \
 	else \
 		echo "$(YELLOW)create-dmg not found. Install with: brew install create-dmg$(NC)"; \
 		echo "$(BLUE)Creating simple DMG...$(NC)"; \
-		hdiutil create -volname "$(PROJECT_NAME)" -srcfolder "$(PROD_BUILD_DIR)" -ov -format UDZO "$(DMG_PATH)"; \
+		hdiutil create -volname "$(PROJECT_NAME)" -srcfolder "$(PROD_BUILD_DIR)/dmg_temp" -ov -format UDZO "$(DMG_PATH)"; \
 	fi
+	@rm -rf "$(PROD_BUILD_DIR)/dmg_temp"
 	@echo "$(BLUE)Signing DMG...$(NC)"
 	codesign --force --sign "Developer ID Application" "$(DMG_PATH)" -v
 
