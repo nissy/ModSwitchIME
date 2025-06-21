@@ -189,7 +189,10 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
                         button.title = "🌐"
                     }
                 } else {
-                    if let image = NSImage(systemSymbolName: "globe.badge.chevron.backward", accessibilityDescription: "IME Switcher - Permission Required") {
+                    if let image = NSImage(
+                        systemSymbolName: "globe.badge.chevron.backward",
+                        accessibilityDescription: "IME Switcher - Permission Required"
+                    ) {
                         image.isTemplate = true
                         button.image = image
                         button.imagePosition = .imageOnly

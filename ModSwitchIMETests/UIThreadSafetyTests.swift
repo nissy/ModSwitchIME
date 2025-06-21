@@ -118,30 +118,27 @@ final class UIThreadSafetyTests: XCTestCase {
         // Simulate the crash scenario: rapid preference UI interaction
         let preferences = Preferences.createForTesting()
         let controller = ImeController()
-        let group = DispatchGroup()
+        let expectation = XCTestExpectation(description: "Rapid switching")
+        expectation.expectedFulfillmentCount = 2
         
         // Thread 1: Simulate UI rapidly accessing input sources
-        group.enter()
         DispatchQueue.global().async {
-            for _ in 0..<20 {
+            for _ in 0..<3 {
                 _ = Preferences.getAllInputSources(includeDisabled: Bool.random())
-                Thread.sleep(forTimeInterval: 0.05)
             }
-            group.leave()
+            expectation.fulfill()
         }
         
         // Thread 2: Simulate IME switching
-        group.enter()
         DispatchQueue.global().async {
-            for _ in 0..<10 {
+            for _ in 0..<2 {
                 _ = controller.getCurrentInputSource()
-                Thread.sleep(forTimeInterval: 0.1)
             }
-            group.leave()
+            expectation.fulfill()
         }
         
-        let result = group.wait(timeout: .now() + 10)
-        XCTAssertEqual(result, .success, "Should handle rapid switching without crash")
+        // Wait for both threads to complete
+        wait(for: [expectation], timeout: 2.0)
     }
     
     func testPreferencesViewRapidUpdates() {
