@@ -128,11 +128,27 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private func showPermissionGrantedNotification() {
         // Temporarily change menu bar icon to notify
         DispatchQueue.main.async { [weak self] in
-            self?.statusBarItem?.button?.title = "✓"
+            guard let button = self?.statusBarItem?.button else { return }
+            
+            // Save current image
+            let originalImage = button.image
+            let originalTitle = button.title
+            
+            // Show checkmark
+            if let checkImage = NSImage(systemSymbolName: "checkmark.circle.fill", 
+                                        accessibilityDescription: "Permission Granted") {
+                checkImage.isTemplate = true
+                button.image = checkImage
+                button.title = ""
+            } else {
+                button.image = nil
+                button.title = "✓"
+            }
             
             // Restore after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                self?.statusBarItem?.button?.title = "⌘"
+                button.image = originalImage
+                button.title = originalTitle
             }
         }
         
@@ -410,8 +426,17 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         case .eventTapCreationFailed:
             // Show error in menu bar temporarily
             statusBarItem?.button?.title = "⚠️"
+            statusBarItem?.button?.image = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                self?.statusBarItem?.button?.title = "⌘"
+                guard let button = self?.statusBarItem?.button else { return }
+                if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                    image.isTemplate = true
+                    button.image = image
+                    button.title = ""
+                } else {
+                    button.image = nil
+                    button.title = "🌐"
+                }
             }
             
             // Show alert only for final failure
@@ -422,11 +447,20 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         case .eventTapDisabled(let automatic):
             // Show warning in menu bar
             statusBarItem?.button?.title = "⚠️"
+            statusBarItem?.button?.image = nil
             
             if !automatic {
                 // User input timeout - show brief notification
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                    self?.statusBarItem?.button?.title = "⌘"
+                    guard let button = self?.statusBarItem?.button else { return }
+                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                        image.isTemplate = true
+                        button.image = image
+                        button.title = ""
+                    } else {
+                        button.image = nil
+                        button.title = "🌐"
+                    }
                 }
             }
             
