@@ -143,7 +143,7 @@ class PreferencesNoDefaultsTests: XCTestCase {
         XCTAssertEqual(preferences.idleTimeout, 5.0, "idleTimeout should default to 5.0")
         XCTAssertFalse(preferences.launchAtLogin, "launchAtLogin should default to false")
         XCTAssertEqual(preferences.cmdKeyTimeout, 0.3, "cmdKeyTimeout should default to 0.3")
-        XCTAssertTrue(preferences.cmdKeyTimeoutEnabled, "cmdKeyTimeoutEnabled should default to true")
+        XCTAssertFalse(preferences.cmdKeyTimeoutEnabled, "cmdKeyTimeoutEnabled should default to false")
         XCTAssertNil(preferences.idleReturnIME, "idleReturnIME should default to nil")
         
         // No automatic IME detection or configuration

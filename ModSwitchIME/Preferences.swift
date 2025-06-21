@@ -224,7 +224,7 @@ class Preferences: ObservableObject {
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? false
         self.motherImeId = UserDefaults.standard.object(forKey: "motherImeId") as? String ?? ""
         self.cmdKeyTimeout = UserDefaults.standard.object(forKey: "cmdKeyTimeout") as? Double ?? 0.3
-        self.cmdKeyTimeoutEnabled = UserDefaults.standard.object(forKey: "cmdKeyTimeoutEnabled") as? Bool ?? true
+        self.cmdKeyTimeoutEnabled = UserDefaults.standard.object(forKey: "cmdKeyTimeoutEnabled") as? Bool ?? false
         self.idleReturnIME = UserDefaults.standard.object(forKey: "idleReturnIME") as? String
         
         // Load modifier key mappings
