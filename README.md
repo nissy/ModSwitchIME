@@ -138,7 +138,7 @@ ModSwitchIME is designed with privacy and security as core principles:
 
 ### Basic Setup
 
-1. Click the "⌘" icon in menu bar
+1. Click the "🌐" icon in menu bar
 2. Select "Preferences..."
 3. Assign desired IMEs to each modifier key
 
