@@ -26,6 +26,8 @@ ExportOptions.plist
 # Test results
 TestResults/
 coverage/
+*.profraw
+*.profdata
 
 # Logs
 *.log

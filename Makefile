@@ -91,9 +91,10 @@ build-dev: ## Build and run development version (keeps permissions)
 		-configuration $(CONFIGURATION_DEBUG) \
 		-destination $(DESTINATION) \
 		-derivedDataPath $(DEV_BUILD_DIR)/DerivedData \
-		CODE_SIGN_IDENTITY="" \
-		CODE_SIGNING_REQUIRED=NO \
-		CODE_SIGNING_ALLOWED=NO \
+		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
+		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
+		CODE_SIGN_STYLE=Automatic \
+		CODE_SIGN_IDENTITY="Apple Development" \
 		build
 	@echo "$(GREEN)Copying to dev directory...$(NC)"
 	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_DEBUG) -derivedDataPath $(DEV_BUILD_DIR)/DerivedData -showBuildSettings DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
