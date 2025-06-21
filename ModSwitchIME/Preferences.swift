@@ -159,7 +159,6 @@ class Preferences: ObservableObject {
     
     @Published var idleOffEnabled: Bool {
         didSet {
-            Logger.debug("idleOffEnabled didSet called: \(idleOffEnabled)", category: .preferences)
             UserDefaults.standard.set(idleOffEnabled, forKey: "idleOffEnabled")
         }
     }
@@ -219,6 +218,9 @@ class Preferences: ObservableObject {
     }
     
     private init() {
+        // Force synchronize to ensure we're reading the latest values
+        UserDefaults.standard.synchronize()
+        
         self.idleOffEnabled = UserDefaults.standard.object(forKey: "idleOffEnabled") as? Bool ?? false
         self.idleTimeout = UserDefaults.standard.object(forKey: "idleTimeout") as? Double ?? 5.0
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? false
@@ -230,6 +232,7 @@ class Preferences: ObservableObject {
         // Load modifier key mappings
         self.modifierKeyMappings = loadModifierKeyMappings()
         self.modifierKeyEnabled = loadModifierKeyEnabled()
+        
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
@@ -399,9 +402,17 @@ class Preferences: ObservableObject {
     // MARK: - Modifier Key Mapping Persistence
     
     private func saveModifierKeyMappings() {
+        // 空の場合は保存しない（初回起動時の対策）
+        if modifierKeyMappings.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "modifierKeyMappings")
+            UserDefaults.standard.synchronize()
+            return
+        }
+        
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(modifierKeyMappings) {
             UserDefaults.standard.set(data, forKey: "modifierKeyMappings")
+            UserDefaults.standard.synchronize()
         }
     }
     
@@ -414,9 +425,17 @@ class Preferences: ObservableObject {
     }
     
     private func saveModifierKeyEnabled() {
+        // 空の場合は保存しない（初回起動時の対策）
+        if modifierKeyEnabled.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "modifierKeyEnabled")
+            UserDefaults.standard.synchronize()
+            return
+        }
+        
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(modifierKeyEnabled) {
             UserDefaults.standard.set(data, forKey: "modifierKeyEnabled")
+            UserDefaults.standard.synchronize()
         }
     }
     

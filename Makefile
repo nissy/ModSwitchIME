@@ -91,9 +91,10 @@ build-dev: ## Build and run development version (keeps permissions)
 		-configuration $(CONFIGURATION_DEBUG) \
 		-destination $(DESTINATION) \
 		-derivedDataPath $(DEV_BUILD_DIR)/DerivedData \
-		CODE_SIGN_IDENTITY="" \
-		CODE_SIGNING_REQUIRED=NO \
-		CODE_SIGNING_ALLOWED=NO \
+		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
+		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
+		CODE_SIGN_STYLE=Automatic \
+		CODE_SIGN_IDENTITY="Apple Development" \
 		build
 	@echo "$(GREEN)Copying to dev directory...$(NC)"
 	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_DEBUG) -derivedDataPath $(DEV_BUILD_DIR)/DerivedData -showBuildSettings DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
@@ -262,15 +263,17 @@ dmg: package ## Create DMG for distribution
 	@rm -rf "$(PROD_BUILD_DIR)/dmg_temp"
 	@mkdir -p "$(PROD_BUILD_DIR)/dmg_temp"
 	@cp -R "$(PROD_BUILD_DIR)/$(PROJECT_NAME).app" "$(PROD_BUILD_DIR)/dmg_temp/"
+	@ln -s /Applications "$(PROD_BUILD_DIR)/dmg_temp/Applications"
 	@if command -v create-dmg >/dev/null 2>&1; then \
 		create-dmg \
 			--volname "$(PROJECT_NAME)" \
 			--window-pos 200 120 \
-			--window-size 800 600 \
+			--window-size 600 400 \
 			--icon-size 100 \
-			--icon "$(PROJECT_NAME).app" 200 190 \
+			--icon "$(PROJECT_NAME).app" 150 200 \
 			--hide-extension "$(PROJECT_NAME).app" \
-			--app-drop-link 600 185 \
+			--app-drop-link 450 200 \
+			--background-color "FFFFFF" \
 			"$(DMG_PATH)" \
 			"$(PROD_BUILD_DIR)/dmg_temp/"; \
 	else \

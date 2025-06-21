@@ -342,4 +342,135 @@ class PreferencesLogicTests: XCTestCase {
         // Then: Should be deallocated when out of scope
         XCTAssertNil(weakPreferences, "Preferences should be deallocated when out of scope")
     }
+    
+    // MARK: - Empty Dictionary Handling Tests
+    
+    func testEmptyModifierKeyMappingsNotSaved() {
+        // Given: Clean state
+        UserDefaults.standard.removeObject(forKey: "modifierKeyMappings")
+        let testPreferences = Preferences.createForTesting()
+        
+        // When: Empty mappings (initial state)
+        // Then: Should not save empty dictionary to UserDefaults
+        XCTAssertNil(UserDefaults.standard.object(forKey: "modifierKeyMappings"), 
+                     "Should not save empty modifierKeyMappings to UserDefaults")
+        
+        // When: Adding a mapping
+        testPreferences.setIME("com.apple.keylayout.US", for: .leftCommand)
+        
+        // Then: Should save to UserDefaults
+        XCTAssertNotNil(UserDefaults.standard.object(forKey: "modifierKeyMappings"),
+                        "Should save non-empty modifierKeyMappings to UserDefaults")
+        
+        // When: Removing all mappings
+        testPreferences.setIME(nil, for: .leftCommand)
+        
+        // Then: Should remove from UserDefaults
+        XCTAssertNil(UserDefaults.standard.object(forKey: "modifierKeyMappings"),
+                     "Should remove modifierKeyMappings from UserDefaults when empty")
+    }
+    
+    func testEmptyModifierKeyEnabledNotSaved() {
+        // Given: Clean state
+        UserDefaults.standard.removeObject(forKey: "modifierKeyEnabled")
+        let testPreferences = Preferences.createForTesting()
+        
+        // When: Empty enabled states (initial state)
+        // Then: Should not save empty dictionary to UserDefaults
+        XCTAssertNil(UserDefaults.standard.object(forKey: "modifierKeyEnabled"),
+                     "Should not save empty modifierKeyEnabled to UserDefaults")
+        
+        // When: Enabling a key
+        testPreferences.setKeyEnabled(true, for: .leftCommand)
+        
+        // Then: Should save to UserDefaults
+        XCTAssertNotNil(UserDefaults.standard.object(forKey: "modifierKeyEnabled"),
+                        "Should save non-empty modifierKeyEnabled to UserDefaults")
+        
+        // When: Disabling all keys (removing from dictionary)
+        testPreferences.modifierKeyEnabled.removeAll()
+        
+        // Then: Should remove from UserDefaults
+        XCTAssertNil(UserDefaults.standard.object(forKey: "modifierKeyEnabled"),
+                     "Should remove modifierKeyEnabled from UserDefaults when empty")
+    }
+    
+    func testModifierKeyMappingsPersistence() {
+        // Given: Test data
+        let testMappings: [ModifierKey: String] = [
+            .leftCommand: "com.apple.keylayout.US",
+            .rightCommand: "com.apple.inputmethod.Kotoeri.Hiragana"
+        ]
+        
+        // When: Setting mappings
+        preferences.modifierKeyMappings = testMappings
+        
+        // Then: Should persist to UserDefaults as JSON
+        let data = UserDefaults.standard.data(forKey: "modifierKeyMappings")
+        XCTAssertNotNil(data, "Should save modifierKeyMappings as data")
+        
+        // Verify data can be decoded back
+        if let data = data,
+           let decoded = try? JSONDecoder().decode([ModifierKey: String].self, from: data) {
+            XCTAssertEqual(decoded.count, testMappings.count, "Should preserve all mappings")
+            XCTAssertEqual(decoded[.leftCommand], testMappings[.leftCommand], 
+                          "Should preserve leftCommand mapping")
+            XCTAssertEqual(decoded[.rightCommand], testMappings[.rightCommand],
+                          "Should preserve rightCommand mapping")
+        } else {
+            XCTFail("Failed to decode modifierKeyMappings")
+        }
+    }
+    
+    func testModifierKeyEnabledPersistence() {
+        // Given: Test data
+        let testEnabled: [ModifierKey: Bool] = [
+            .leftShift: true,
+            .rightShift: false,
+            .leftOption: true
+        ]
+        
+        // When: Setting enabled states
+        preferences.modifierKeyEnabled = testEnabled
+        
+        // Then: Should persist to UserDefaults as JSON
+        let data = UserDefaults.standard.data(forKey: "modifierKeyEnabled")
+        XCTAssertNotNil(data, "Should save modifierKeyEnabled as data")
+        
+        // Verify data can be decoded back
+        if let data = data,
+           let decoded = try? JSONDecoder().decode([ModifierKey: Bool].self, from: data) {
+            XCTAssertEqual(decoded.count, testEnabled.count, "Should preserve all enabled states")
+            XCTAssertEqual(decoded[.leftShift], testEnabled[.leftShift],
+                          "Should preserve leftShift state")
+            XCTAssertEqual(decoded[.rightShift], testEnabled[.rightShift],
+                          "Should preserve rightShift state")
+            XCTAssertEqual(decoded[.leftOption], testEnabled[.leftOption],
+                          "Should preserve leftOption state")
+        } else {
+            XCTFail("Failed to decode modifierKeyEnabled")
+        }
+    }
+    
+    func testLoadingFromEmptyArrayData() {
+        // This test simulates the bug where empty array [] was saved instead of empty dictionary {}
+        
+        // Given: Empty array data in UserDefaults (simulating the bug)
+        let emptyArrayData = "[]".data(using: .utf8)!
+        UserDefaults.standard.set(emptyArrayData, forKey: "modifierKeyMappings")
+        UserDefaults.standard.set(emptyArrayData, forKey: "modifierKeyEnabled")
+        
+        // When: Creating new Preferences instance
+        let testPreferences = Preferences.createForTesting()
+        
+        // Then: Should handle gracefully and return empty dictionaries
+        XCTAssertTrue(testPreferences.modifierKeyMappings.isEmpty,
+                     "Should handle empty array data gracefully for mappings")
+        XCTAssertTrue(testPreferences.modifierKeyEnabled.isEmpty,
+                     "Should handle empty array data gracefully for enabled states")
+        
+        // Cleanup
+        UserDefaults.standard.removeObject(forKey: "modifierKeyMappings")
+        UserDefaults.standard.removeObject(forKey: "modifierKeyEnabled")
+    }
 }

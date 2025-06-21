@@ -37,7 +37,7 @@ Choose from any IME registered in your system.
 - Press modifier key alone → Switch to assigned IME
 - Modifier key + other keys → Normal shortcuts (Cmd+C, Cmd+V, etc.)
 - Distinguishes between left and right modifier keys
-- Detection time adjustable from 0.1 to 1.0 seconds (default: 0.06 seconds)
+- Detection time adjustable from 0.1 to 1.0 seconds (default: 0.3 seconds)
 
 #### Supported IMEs
 - **Japanese**: Kotoeri, Google Japanese Input, ATOK, Kawasemi, etc.
@@ -75,9 +75,11 @@ Choose from any IME registered in your system.
 ### 4. Menu Bar Features
 
 #### Menu Items
-- **About ModSwitchIME** - Version information
+- **About ModSwitchIME** - Version information and privacy policy
 - **Preferences...** - Open settings window (⌘,)
+- **Grant Permissions...** - Open accessibility settings (when not granted)
 - **Launch at Login** - Toggle auto-start
+- **Restart ModSwitchIME** - Restart the application (⌘R)
 - **Quit** - Exit application (⌘Q)
 
 ### 5. Automatic Accessibility Permission Detection
@@ -90,7 +92,7 @@ Choose from any IME registered in your system.
 ### 6. Launch at Login
 
 - Easy on/off toggle from menu
-- Uses SMAppService API (macOS 13.0+)
+- Uses SMAppService API
 - Registers as system startup item
 
 ### 7. Performance Characteristics
@@ -101,14 +103,13 @@ Choose from any IME registered in your system.
 - **Memory usage**: Under 25MB
 - **Battery impact**: Minimal
 
-### 8. Parent-Child IME Auto-Grouping
+### 8. IME Selection Interface
 
-Japanese IME example:
-- Select "Japanese" → Hiragana, Katakana, Romaji all available
-- Mode switching works as usual with IME operations
-
-Chinese IME example:
-- Select "Chinese" → Pinyin, Zhuyin, handwriting input all available
+- **Language-based grouping**: IMEs are organized by language (Japanese, Chinese, Korean, etc.)
+- **Visual icons**: Each IME displays with language-specific flag icons
+- **Search function**: Quickly find IMEs by name or language
+- **Disabled IME support**: Option to show/hide disabled input sources
+- **All system-registered IMEs**: Full support for third-party IMEs like ATOK, Google Japanese Input
 
 ## Security & Privacy
 
@@ -117,7 +118,7 @@ ModSwitchIME is designed with privacy and security as core principles:
 - **Privacy-first design**: Only monitors modifier keys, never captures regular typing
 - **No data collection**: All processing happens locally on your Mac
 - **Open source**: Complete source code available for inspection
-- **Code signed**: Official releases are signed and notarized by Apple
+- **Code signed**: Official releases are signed with Developer ID and notarized by Apple
 
 📋 **[View detailed Security Policy](https://github.com/nissy/ModSwitchIME/blob/main/SECURITY_POLICY.md)**
 
@@ -125,14 +126,17 @@ ModSwitchIME is designed with privacy and security as core principles:
 
 ### System Requirements
 
-- macOS 13.0 (Ventura) or later
+- macOS 15.0 or later
 - Accessibility permission required
 
 ### Installation Steps
 
 1. Download the latest DMG from [Releases](https://github.com/nissy/ModSwitchIME/releases)
-2. Mount the DMG and drag ModSwitchIME.app to Applications folder
-3. Grant accessibility permission on first launch
+2. **If updating**: Quit ModSwitchIME first (click 🌐 icon → Quit)
+3. Mount the DMG and drag ModSwitchIME.app to Applications folder
+4. Grant accessibility permission on first launch
+
+> **Note**: When updating, you must quit the app first to avoid "Item is in use" error. This is a macOS security feature.
 
 ## Usage
 
@@ -151,6 +155,7 @@ ModSwitchIME is designed with privacy and security as core principles:
 #### Detection Time (Wait Before Switching)
 - Modifier key alone detection time: 0.1-1.0 seconds (100-1000ms)
 - Default: 0.3 seconds (300ms), disabled by default
+- When disabled, keys switch immediately upon release
 
 #### Auto-Switch on Idle
 - Idle time: 1-300 seconds
