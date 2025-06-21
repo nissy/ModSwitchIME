@@ -19,29 +19,24 @@ class PreferencesLogicTests: XCTestCase {
         super.tearDown()
     }
     
-    // MARK: - Default CJK Input Source Detection Tests
+    // MARK: - Default Settings Tests
     
-    func testDefaultCJKDetectionWithJapaneseLocale() {
-        // Given: Simulated Japanese locale environment
-        // When: Creating new preferences (which triggers CJK detection)
+    func testNoDefaultCJKDetection() {
+        // Given: Clean state with no existing preferences
+        // When: Creating new preferences
         let testPreferences = Preferences.createForTesting()
         
-        // Then: Should detect Japanese input method
-        XCTAssertTrue(testPreferences.motherImeId.contains("Kotoeri") || 
-                     testPreferences.motherImeId.contains("Japanese"),
-                     "Should detect Japanese input method as default")
+        // Then: Should not automatically set motherImeId
+        XCTAssertEqual(testPreferences.motherImeId, "", "Should not automatically set default input method")
     }
     
-    func testDefaultCJKDetectionFallback() {
-        // Given: No specific CJK input method preference
-        // When: Default detection runs
+    func testNoDefaultModifierKeyMappings() {
+        // Given: Clean state with no existing preferences
+        // When: Creating new preferences
         let testPreferences = Preferences.createForTesting()
         
-        // Then: Should have some valid input method selected
-        XCTAssertFalse(testPreferences.motherImeId.isEmpty, "Should have default input method")
-        XCTAssertTrue(testPreferences.motherImeId.contains("inputmethod") || 
-                     testPreferences.motherImeId.contains("Kotoeri"),
-                     "Default should be valid input method")
+        // Then: Should not have any default modifier key mappings
+        XCTAssertTrue(testPreferences.modifierKeyMappings.isEmpty, "Should not have default modifier key mappings")
     }
     
     // MARK: - Preferences State Management Tests
@@ -96,7 +91,7 @@ class PreferencesLogicTests: XCTestCase {
         XCTAssertFalse(testPreferences.idleOffEnabled, "Default idleOffEnabled should be false")
         XCTAssertEqual(testPreferences.idleTimeout, 5.0, "Default idleTimeout should be 5.0")
         XCTAssertFalse(testPreferences.launchAtLogin, "Default launchAtLogin should be false")
-        XCTAssertFalse(testPreferences.motherImeId.isEmpty, "Default motherImeId should not be empty")
+        XCTAssertEqual(testPreferences.motherImeId, "", "Default motherImeId should be empty")
     }
     
     // MARK: - Property Change Propagation Tests
@@ -223,25 +218,21 @@ class PreferencesLogicTests: XCTestCase {
         // Given: Store the original value to restore later
         let originalValue = UserDefaults.standard.string(forKey: "motherImeId")
         
-        // Set a test value in UserDefaults
+        // Set a test value in UserDefaults AFTER creating test instance
         let testImeId = "com.apple.inputmethod.test.ime"
-        UserDefaults.standard.set(testImeId, forKey: "motherImeId")
-        UserDefaults.standard.synchronize()
-        
-        // When: Creating a new Preferences instance using createForTesting
-        // Note: createForTesting clears UserDefaults, so we need to set the value again
-        UserDefaults.standard.set(testImeId, forKey: "motherImeId")
         let testPreferences = Preferences.createForTesting()
         
-        // Then: The instance should load the value from UserDefaults
-        // Note: If motherImeId is empty in UserDefaults, detectDefaultCJKInputSource() will be called
-        // So we check if either the test value was loaded or a default was detected
-        XCTAssertFalse(
-            testPreferences.motherImeId.isEmpty,
-            "motherImeId should not be empty"
+        // When: Setting a value and verifying it's saved to UserDefaults
+        testPreferences.motherImeId = testImeId
+        
+        // Then: The value should be persisted to UserDefaults
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: "motherImeId"),
+            testImeId,
+            "Should persist motherImeId to UserDefaults"
         )
         
-        // Test persistence: Change the value and verify it's saved
+        // Test loading: Change the value and verify it's saved
         let newImeId = "com.apple.inputmethod.new.test"
         testPreferences.motherImeId = newImeId
         

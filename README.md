@@ -70,23 +70,7 @@ Choose from any IME registered in your system.
   - Idle time modification
   - Target IME selection
 
-### 4. CJK Language Auto-Detection
-
-Right Command key default setting auto-detects based on system locale:
-
-1. Japanese environment → Japanese (Hiragana)
-2. Chinese environment (Simplified) → Chinese Simplified
-3. Chinese environment (Traditional) → Chinese Traditional
-4. Korean environment → Korean
-
-Detection priority:
-1. Japanese (Kotoeri)
-2. Chinese Simplified (SCIM)
-3. Chinese Traditional (TCIM)
-4. Korean
-5. Vietnamese
-
-### 5. Menu Bar Features
+### 4. Menu Bar Features
 
 #### Menu Items
 - **About ModSwitchIME** - Version information
@@ -94,20 +78,20 @@ Detection priority:
 - **Launch at Login** - Toggle auto-start
 - **Quit** - Exit application (⌘Q)
 
-### 6. Automatic Accessibility Permission Detection
+### 5. Automatic Accessibility Permission Detection
 
 - Checks permission status on app launch (no prompt shown)
 - Checks permission status on each menu click
 - Automatically starts key monitoring when permission is granted
 - Visual feedback (✓ icon) when permission is granted
 
-### 7. Launch at Login
+### 6. Launch at Login
 
 - Easy on/off toggle from menu
 - Uses SMAppService API (macOS 13.0+)
 - Registers as system startup item
 
-### 8. Performance Characteristics
+### 7. Performance Characteristics
 
 - **Startup time**: Under 1 second
 - **IME switch speed**: Under 15 milliseconds
@@ -115,7 +99,7 @@ Detection priority:
 - **Memory usage**: Under 25MB
 - **Battery impact**: Minimal
 
-### 9. Parent-Child IME Auto-Grouping
+### 8. Parent-Child IME Auto-Grouping
 
 Japanese IME example:
 - Select "Japanese" → Hiragana, Katakana, Romaji all available
@@ -160,11 +144,11 @@ ModSwitchIME is designed with privacy and security as core principles:
 
 #### Modifier Key Assignment
 - Assign IME to each of 8 modifier keys
-- Default: Left Command = English, Right Command = CJK language (auto-detected)
+- Default: No automatic assignments (manual configuration required)
 
 #### Detection Time (Wait Before Switching)
 - Modifier key alone detection time: 0.1-1.0 seconds (100-1000ms)
-- Default: 0.06 seconds (60ms)
+- Default: 0.3 seconds (300ms), disabled by default
 
 #### Auto-Switch on Idle
 - Idle time: 1-300 seconds
