@@ -427,10 +427,10 @@ show-version: ## Show version from xcconfig files
 	@echo "Marketing Version: $$(grep '^MARKETING_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
 	@echo "Build Number: $$(grep '^CURRENT_PROJECT_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
 
-bump-version: ## Update version (usage: make bump-version VERSION=1.0.1)
+bump-version: ## Update version (usage: make bump-version VERSION=1.0.2)
 	@if [ -z "$(VERSION)" ]; then \
 		echo "$(RED)Error: VERSION not specified$(NC)"; \
-		echo "Usage: make bump-version VERSION=1.0.1"; \
+		echo "Usage: make bump-version VERSION=1.0.2"; \
 		exit 1; \
 	fi
 	@./Scripts/update_version.sh $(VERSION)
