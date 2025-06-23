@@ -80,14 +80,15 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             let alert = NSAlert()
             alert.messageText = "Accessibility Permission Required"
             alert.informativeText = """
-                ModSwitchIME needs permission to detect modifier key presses.
+                ModSwitchIME needs Accessibility permission to detect modifier key presses for IME switching.
                 
-                ⚠️ Important Privacy Information:
-                • ONLY modifier keys (⌘, ⇧, ⌃, ⌥) are monitored
-                • NO text input or regular keystrokes are captured
-                • NO data is stored or transmitted
+                🔒 Privacy Guarantee:
+                • Detects key presses only to distinguish shortcuts from single modifier keys
+                • NO text content, keystrokes, or personal data captured
+                • NO data stored, logged, or transmitted anywhere
                 • All processing happens locally on your Mac
-                • You can revoke access anytime in System Settings
+                • Open source code available for security review
+                • Permission can be revoked anytime
                 
                 Please enable ModSwitchIME in:
                 System Settings → Privacy & Security → Accessibility

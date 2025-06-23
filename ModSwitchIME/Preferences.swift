@@ -218,7 +218,8 @@ class Preferences: ObservableObject {
     }
     
     private init() {
-        // Force synchronize to ensure we're reading the latest values
+        // Privacy Note: Only essential app preferences are stored locally
+        // No user data, keystrokes, or sensitive information is persisted
         UserDefaults.standard.synchronize()
         
         self.idleOffEnabled = UserDefaults.standard.object(forKey: "idleOffEnabled") as? Bool ?? false

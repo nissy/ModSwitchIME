@@ -27,7 +27,8 @@ class KeyMonitor {
     private var multiKeyPressKeys: Set<ModifierKey> = []  // Track all keys involved in multi-key press
     // isFirstKeyPress is no longer needed after removing the first key press restriction
     private var nonModifierKeyPressed = false  // Track if any non-modifier key is pressed
-    private var modifierKeysWithNonModifierPress: Set<ModifierKey> = []  // Track which modifier keys had non-modifier keys pressed during their hold
+    // Track which modifier keys had non-modifier keys pressed during their hold
+    private var modifierKeysWithNonModifierPress: Set<ModifierKey> = []
     
     // Idle timer related
     private var idleTimer: Timer?
