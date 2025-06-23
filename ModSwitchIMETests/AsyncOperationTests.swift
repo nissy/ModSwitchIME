@@ -26,7 +26,7 @@ class AsyncOperationTests: XCTestCase {
         
         // When: Changing input source asynchronously
         DispatchQueue.global().async {
-            self.imeController.toggleByCmd(isLeft: true)
+            self.imeController.forceAscii()
             
             // Simulate verification delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -49,7 +49,11 @@ class AsyncOperationTests: XCTestCase {
         // When: Performing multiple toggles
         for i in 0..<5 {
             DispatchQueue.global().asyncAfter(deadline: .now() + Double(i) * 0.1) {
-                self.imeController.toggleByCmd(isLeft: i % 2 == 0)
+                if i % 2 == 0 {
+                    self.imeController.forceAscii()
+                } else {
+                    self.imeController.switchToSpecificIME("com.apple.keylayout.ABC")
+                }
                 expectation.fulfill()
             }
         }
@@ -156,7 +160,7 @@ class AsyncOperationTests: XCTestCase {
             
             // Step 2: Toggle
             DispatchQueue.main.async {
-                self.imeController.toggleByCmd(isLeft: true)
+                self.imeController.forceAscii()
                 completedSteps += 1
                 
                 // Step 3: Verify

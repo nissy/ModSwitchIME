@@ -64,7 +64,7 @@ class MemoryLeakTests: XCTestCase {
             
             // When: Using controller
             _ = imeController.getCurrentInputSource()
-            imeController.toggleByCmd(isLeft: true)
+            imeController.switchToSpecificIME("com.apple.keylayout.ABC")
             imeController.forceAscii()
             
             // Then: The operations should complete without creating memory leaks

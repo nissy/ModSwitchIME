@@ -302,17 +302,17 @@ class UIStateTransitionTests: XCTestCase {
         let imeController = ImeController()
         let initialSource = imeController.getCurrentInputSource()
         
-        // When: Toggling input methods
-        imeController.toggleByCmd(isLeft: true)
-        let afterLeftCmd = imeController.getCurrentInputSource()
+        // When: Forcing ASCII and switching to specific IME
+        imeController.forceAscii()
+        let afterForceAscii = imeController.getCurrentInputSource()
         
-        imeController.toggleByCmd(isLeft: false)
-        let afterRightCmd = imeController.getCurrentInputSource()
+        imeController.switchToSpecificIME("com.apple.keylayout.ABC")
+        let afterSpecificSwitch = imeController.getCurrentInputSource()
         
         // Then: Sources should be valid (actual switching depends on system state)
         XCTAssertFalse(initialSource.isEmpty)
-        XCTAssertFalse(afterLeftCmd.isEmpty)
-        XCTAssertFalse(afterRightCmd.isEmpty)
+        XCTAssertFalse(afterForceAscii.isEmpty)
+        XCTAssertFalse(afterSpecificSwitch.isEmpty)
     }
     
     // MARK: - Animation State Tests
