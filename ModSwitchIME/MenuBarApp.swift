@@ -36,7 +36,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         // Log the file path on startup
         if let logPath = Logger.getLogFilePath() {
             Logger.info("Debug log file: \(logPath)", category: .main)
-            print("ModSwitchIME Debug Log: \(logPath)")
+            Logger.info("ModSwitchIME Debug Log: \(logPath)", category: .main)
         }
         
         checkAccessibilityPermissions()

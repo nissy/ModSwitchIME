@@ -4,7 +4,7 @@ import CoreGraphics
 
 class KeyMonitorSimpleTest: XCTestCase {
     var keyMonitor: KeyMonitor!
-    var mockImeController: MockImeController!
+    var mockImeController: FixedMockImeController!
     var preferences: Preferences!
     
     override func setUp() {
@@ -20,7 +20,7 @@ class KeyMonitorSimpleTest: XCTestCase {
         
         // Create KeyMonitor with mock ImeController
         keyMonitor = KeyMonitor(preferences: preferences)
-        mockImeController = MockImeController()
+        mockImeController = FixedMockImeController()
         #if DEBUG
         keyMonitor.setImeController(mockImeController)
         #endif
@@ -51,6 +51,32 @@ class KeyMonitorSimpleTest: XCTestCase {
         
         // Should switch to ABC
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 1)
+        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.first?.ime, "com.apple.keylayout.ABC")
+        #endif
+    }
+    
+    func testLongSinglePress() {
+        #if DEBUG
+        mockImeController.switchToSpecificIMECalls.removeAll()
+        
+        // Press and hold for long time (> 300ms)
+        keyMonitor.simulateFlagsChanged(
+            keyCode: ModifierKey.leftCommand.keyCode,
+            flags: ModifierKey.leftCommand.flagMask
+        )
+        
+        // Long delay (500ms)
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        // Release - should still trigger IME switch regardless of duration
+        keyMonitor.simulateFlagsChanged(keyCode: ModifierKey.leftCommand.keyCode, flags: [])
+        
+        // Should switch even for long press
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.count,
+            1,
+            "Long single press should trigger IME switch"
+        )
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.first?.ime, "com.apple.keylayout.ABC")
         #endif
     }

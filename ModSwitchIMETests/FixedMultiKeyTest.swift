@@ -2,22 +2,6 @@ import XCTest
 import CoreGraphics
 @testable import ModSwitchIME
 
-// New Mock ImeController for testing
-class FixedMockImeController: ImeController {
-    var switchToSpecificIMECalls: [(ime: String, time: CFAbsoluteTime)] = []
-    private var currentIME: String = "com.apple.keylayout.US"  // Different from test IMEs
-    
-    override func switchToSpecificIME(_ targetIMEId: String) {
-        switchToSpecificIMECalls.append((ime: targetIMEId, time: CFAbsoluteTimeGetCurrent()))
-        currentIME = targetIMEId
-        print("FixedMockImeController: Switching to \(targetIMEId)")
-    }
-    
-    override func getCurrentInputSource() -> String {
-        return currentIME
-    }
-}
-
 class FixedMultiKeyTest: XCTestCase {
     var keyMonitor: KeyMonitor!
     var mockImeController: FixedMockImeController!
@@ -138,11 +122,11 @@ class FixedMultiKeyTest: XCTestCase {
         )
         
         print("=== Test Summary ===")
-        print("Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)")
+        // Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)
         print("Expected: 2 (step 2 and step 6)")
         
         for (index, call) in mockImeController.switchToSpecificIMECalls.enumerated() {
-            print("  Switch \(index + 1): \(call.ime)")
+            // Switch \(index + 1): \(call.ime)
         }
         
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 2,
@@ -218,11 +202,11 @@ class FixedMultiKeyTest: XCTestCase {
         XCTAssertEqual(step4After, step4Before, "Right CMD release should NOT switch")
         
         print("\n=== Final Summary ===")
-        print("Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)")
+        // Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)
         print("Expected: 1 (only step 2)")
         
         for (index, call) in mockImeController.switchToSpecificIMECalls.enumerated() {
-            print("  Switch \(index + 1): \(call.ime)")
+            // Switch \(index + 1): \(call.ime)
         }
         
         // Final assertion: should have exactly 1 switch (step 2 only)
