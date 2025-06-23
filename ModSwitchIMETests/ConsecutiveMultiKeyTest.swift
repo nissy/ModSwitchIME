@@ -2,9 +2,25 @@ import XCTest
 import CoreGraphics
 @testable import ModSwitchIME
 
+// Simple Mock ImeController for testing
+class SimpleMockImeController: ImeController {
+    var switchToSpecificIMECalls: [(ime: String, time: CFAbsoluteTime)] = []
+    private var currentIME: String = "com.apple.keylayout.ABC"  // Default to ABC
+    
+    override func switchToSpecificIME(_ targetIMEId: String) {
+        switchToSpecificIMECalls.append((ime: targetIMEId, time: CFAbsoluteTimeGetCurrent()))
+        currentIME = targetIMEId
+        print("SimpleMockImeController: Switching to \(targetIMEId)")
+    }
+    
+    override func getCurrentInputSource() -> String {
+        return currentIME
+    }
+}
+
 class ConsecutiveMultiKeyTest: XCTestCase {
     var keyMonitor: KeyMonitor!
-    var mockImeController: MockImeController!
+    var mockImeController: SimpleMockImeController!
     var preferences: Preferences!
     
     override func setUp() {
@@ -20,7 +36,7 @@ class ConsecutiveMultiKeyTest: XCTestCase {
         
         // Create KeyMonitor with mock ImeController
         keyMonitor = KeyMonitor(preferences: preferences)
-        mockImeController = MockImeController()
+        mockImeController = SimpleMockImeController()
         #if DEBUG
         keyMonitor.setImeController(mockImeController)
         #endif

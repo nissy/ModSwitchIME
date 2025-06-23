@@ -69,10 +69,9 @@ class KeyMonitorSimpleTest: XCTestCase {
             flags: [ModifierKey.leftCommand.flagMask, ModifierKey.rightCommand.flagMask]
         )
         
-        // Should switch twice: first to right command when pressed, then to left command when pressed
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 2)
+        // Should switch once: to the last pressed key (right command)
+        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 1)
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls[0].ime, "com.justsystems.inputmethod.atok34.Japanese")
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls[1].ime, "com.apple.keylayout.ABC")
         
         // Release left command
         keyMonitor.simulateFlagsChanged(

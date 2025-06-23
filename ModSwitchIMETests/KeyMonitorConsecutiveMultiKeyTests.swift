@@ -5,10 +5,16 @@ import CoreGraphics
 // Mock ImeController for testing
 class MockImeController: ImeController {
     var switchToSpecificIMECalls: [(ime: String, time: CFAbsoluteTime)] = []
+    private var currentIME: String = "com.apple.keylayout.US"  // Default to US (different from test IMEs)
     
     override func switchToSpecificIME(_ targetIMEId: String) {
         switchToSpecificIMECalls.append((ime: targetIMEId, time: CFAbsoluteTimeGetCurrent()))
+        currentIME = targetIMEId
         print("MockImeController: Switching to \(targetIMEId)")
+    }
+    
+    override func getCurrentInputSource() -> String {
+        return currentIME
     }
 }
 
