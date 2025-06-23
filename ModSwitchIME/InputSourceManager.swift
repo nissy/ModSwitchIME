@@ -66,9 +66,9 @@ struct InputSourceManager {
         if let appleEnabledInputSources = hiToolboxDefaults?.object(
             forKey: "AppleEnabledInputSources"
         ) as? [[String: Any]] {
-            Logger.debug("Found \(appleEnabledInputSources.count) sources in HIToolbox preferences", category: .ime)
+            // Found sources in HIToolbox preferences
             for source in appleEnabledInputSources {
-                Logger.debug("HIToolbox source: \(source)", category: .ime)
+                // Process HIToolbox source
                 if let bundleID = source["Bundle ID"] as? String {
                     enabledIDs.insert(bundleID)
                 } else if let keyboardLayoutName = source["KeyboardLayout Name"] as? String {
@@ -79,24 +79,23 @@ struct InputSourceManager {
                 }
             }
         } else {
-            Logger.debug("No AppleEnabledInputSources found in HIToolbox preferences", category: .ime)
+            // No AppleEnabledInputSources found in HIToolbox preferences
         }
         
         // Method 2: Also check TISCreateInputSourceList with includeAllInstalled = false
         // This gives us the actually active input sources
         if let enabledList = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] {
-            Logger.debug("TISCreateInputSourceList(false) returned \(enabledList.count) sources", category: .ime)
+            // Check TIS enabled sources
             for inputSource in enabledList {
                 if let sourceID = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
                     let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
                     enabledIDs.insert(id)
                     
                     // Also check if this source is actually enabled
-                    var isEnabled = false
                     if let enabledRef = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
-                        isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
+                        _ = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(enabledRef).takeUnretainedValue())
                     }
-                    Logger.debug("TIS enabled list: \(id), enabled flag: \(isEnabled)", category: .ime)
+                    // Process TIS enabled source
                 }
             }
         }

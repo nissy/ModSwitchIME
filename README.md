@@ -129,7 +129,7 @@ When you press multiple modifier keys configured with IMEs:
 
 ModSwitchIME is designed with privacy and security as core principles:
 
-- **Privacy-first design**: Only monitors modifier keys, never captures regular typing
+- **Privacy-first design**: Detects key presses to distinguish shortcuts from single modifier keys, never captures text content
 - **No data collection**: All processing happens locally on your Mac
 - **Open source**: Complete source code available for inspection
 - **Code signed**: Official releases are signed with Developer ID and notarized by Apple
@@ -193,7 +193,7 @@ ModSwitchIME is designed with privacy and security as core principles:
 2. **Instant & reliable** - No delays, works with all IMEs including CJK languages
 3. **Advanced features** - Multi-key switching, auto-switch on idle, all in one app
 4. **Easy configuration** - Simple GUI, no technical knowledge required
-5. **Privacy-first** - Only monitors modifier keys, never captures your typing
+5. **Privacy-first** - Detects key presses for switching logic, never captures text content
 
 ## Troubleshooting
 

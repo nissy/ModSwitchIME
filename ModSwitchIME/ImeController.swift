@@ -11,9 +11,7 @@ class ImeController: ErrorHandler {
     private let cacheQueue = DispatchQueue(label: "com.modswitchime.cache", attributes: .concurrent)
     private let maxCacheSize = 50 // Maximum number of cached input sources
     
-    // Cache refresh timer
-    private var cacheRefreshTimer: Timer?
-    private let cacheRefreshInterval: TimeInterval = 30.0 // Refresh cache every 30 seconds
+    // Cache refresh timer - disabled for performance
     
     init() {
         // Initialize cache
@@ -21,19 +19,6 @@ class ImeController: ErrorHandler {
         
         // Disabled automatic cache refresh for performance
         // startCacheRefreshTimer()
-    }
-    
-    deinit {
-        cacheRefreshTimer?.invalidate()
-    }
-    
-    private func startCacheRefreshTimer() {
-        cacheRefreshTimer = Timer.scheduledTimer(
-            withTimeInterval: cacheRefreshInterval, 
-            repeats: true
-        ) { [weak self] _ in
-            self?.refreshInputSourceCache()
-        }
     }
     
     private func refreshInputSourceCache() {
@@ -75,11 +60,6 @@ class ImeController: ErrorHandler {
                 self.inputSourceCache.removeAll(keepingCapacity: false)
                 // Update with new data
                 self.inputSourceCache = cacheData
-                
-                Logger.debug(
-                    "Cache refreshed: \(self.inputSourceCache.count) sources (limit: \(self.maxCacheSize))", 
-                    category: .ime
-                )
             }
         }
     }
@@ -90,7 +70,6 @@ class ImeController: ErrorHandler {
         for sourceID in englishSources {
             do {
                 try selectInputSource(sourceID)
-                Logger.debug("Switched to English: \(sourceID)", category: .ime)
                 return
             } catch {
                 // Try next
@@ -105,29 +84,7 @@ class ImeController: ErrorHandler {
         switchToEnglish()
     }
     
-    func toggleByCmd(isLeft: Bool) {
-        Logger.debug("Cmd toggle: \(isLeft ? "left" : "right")", category: .ime)
-        
-        if isLeft {
-            // Left cmd: Switch to English
-            switchToEnglish()
-        } else {
-            // Right cmd: Switch to configured IME
-            let targetIME = preferences.motherImeId
-            
-            if !targetIME.isEmpty {
-                do {
-                    try selectInputSource(targetIME)
-                } catch {
-                    let imeError = ModSwitchIMEError.inputSourceNotFound(targetIME)
-                    handleError(imeError)
-                }
-            } else {
-                let error = ModSwitchIMEError.invalidConfiguration
-                handleError(error)
-            }
-        }
-    }
+    // Removed toggleByCmd - no longer used after architecture changes
     
     func switchToSpecificIME(_ imeId: String) {
         // Skip empty IME ID check first for performance
@@ -136,53 +93,20 @@ class ImeController: ErrorHandler {
             return
         }
         
-        // Get current input source before switching
-        let currentIME = getCurrentInputSource()
-        
-        // If switching to the same IME, skip
-        if currentIME == imeId {
-            Logger.debug("Already on target IME: \(imeId), skipping switch", category: .ime)
-            return
-        }
-        
+        // Direct switch without checking current IME for better performance
+        // TIS API handles switching to the same IME efficiently
         do {
             try selectInputSource(imeId)
-            
-            // Verify the switch happened
-            let newID = getCurrentInputSource()
-            if newID != imeId {
-                Logger.warning("IME switch may have failed: requested \(imeId), got \(newID)", category: .ime)
-            }
         } catch {
             let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
             handleError(imeError)
         }
     }
     
-    private func getAlternativeIME(excluding: String) -> String? {
-        // Try to find an alternative IME for temporary switching
-        if excluding != "com.apple.keylayout.ABC" {
-            return "com.apple.keylayout.ABC"
-        }
-        // Find any other available IME
-        for (id, _) in inputSourceCache {
-            if id != excluding {
-                return id
-            }
-        }
-        return nil
-    }
-    
     func selectInputSource(_ inputSourceID: String) throws {
         // Check cache first for fast path
         if let cachedSource = inputSourceCache[inputSourceID] {
             TISSelectInputSource(cachedSource)
-            
-            // Debug: Verify the switch actually happened
-            let newID = getCurrentInputSource()
-            if newID != inputSourceID {
-                Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
-            }
             
             return
         }
@@ -203,12 +127,6 @@ class ImeController: ErrorHandler {
                     // Update cache without blocking
                     inputSourceCache[inputSourceID] = inputSource
                     
-                    // Debug: Verify the switch actually happened
-                    let newID = getCurrentInputSource()
-                    if newID != inputSourceID {
-                        Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
-                    }
-                    
                     return
                 }
             }
@@ -217,40 +135,7 @@ class ImeController: ErrorHandler {
         throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
     }
     
-    private func performSwitch(from currentID: String, to targetID: String, source: TISInputSource) throws {
-        let currentFamily = getIMEFamily(currentID)
-        let targetFamily = getIMEFamily(targetID)
-        
-        // Optimized workaround for same IME family switching
-        if currentFamily == targetFamily && currentFamily != "com.apple.keylayout" {
-            // Use a faster approach: deactivate current then activate target
-            if let currentSource = cacheQueue.sync(execute: { inputSourceCache[currentID] }) {
-                TISDeselectInputSource(currentSource)
-            }
-            
-            // Direct switch without delay for better performance
-            TISSelectInputSource(source)
-            return
-        }
-        
-        // Select the target input source immediately
-        TISSelectInputSource(source)
-        // Skip verification for better performance
-    }
-    
-    private func verifyInputSourceSwitchAsync(targetID: String, source: TISInputSource) {
-        // Removed for performance optimization
-        // Verification was causing delays in the switching process
-    }
-    
-    // Helper function to reduce complexity
-    private func getIMEFamily(_ sourceID: String) -> String {
-        let components = sourceID.components(separatedBy: ".")
-        if components.count >= 3 {
-            return components.prefix(3).joined(separator: ".")
-        }
-        return sourceID
-    }
+    // Removed performSwitch and related methods - no longer needed after simplification
     
     func getCurrentInputSource() -> String {
         // TIS APIs must be called on main thread
@@ -277,8 +162,6 @@ class ImeController: ErrorHandler {
         
         return "Unknown"
     }
-    
-    // Removed findInputSource methods - integrated into selectInputSource for better performance
     
     // MARK: - ErrorHandler
     

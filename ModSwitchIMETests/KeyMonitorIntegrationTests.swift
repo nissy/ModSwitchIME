@@ -87,7 +87,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
         // Test disabled: ImeController toggle methods can crash in test environment
         // These methods make system calls that require permissions and can cause crashes
         
-        // Note: In real usage, toggleByCmd() switches between input methods
+        // Note: In real usage, switchToSpecificIME() switches between input methods
         // but testing this requires system access and can crash the test runner
         XCTAssertTrue(true, "ImeController toggle behavior test skipped for test environment safety")
     }

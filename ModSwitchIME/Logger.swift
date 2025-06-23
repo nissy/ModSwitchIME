@@ -32,7 +32,12 @@ struct Logger {
     }()
     
     private static func writeToFile(_ message: String, level: String, category: Category) {
-        guard let handle = fileHandle else { return }
+        // Privacy protection: Only write non-sensitive system events to file
+        guard let handle = fileHandle,
+              level == "ERROR" || level == "WARNING",
+              category != .keyboard else { 
+            return 
+        }
         
         let timestamp = ISO8601DateFormatter().string(from: Date())
         let logLine = "[\(timestamp)] [\(level)] [\(category)] \(message)\n"
@@ -61,30 +66,38 @@ struct Logger {
         }
     }
     
-    // Debug logging - always enabled for troubleshooting
+    // Debug logging - only for system events, no user data
     static func debug(_ message: String, category: Category = .main) {
+        // Only log to system (Console.app) for debugging, not to file
         category.logger.debug("\(message)")
-        writeToFile(message, level: "DEBUG", category: category)
+        // Debug messages are NOT written to file for privacy
     }
     
-    // Info logging - important operational messages
+    // Info logging - important operational messages only
     static func info(_ message: String, category: Category = .main) {
         category.logger.info("\(message)")
-        writeToFile(message, level: "INFO", category: category)
+        // Only write non-sensitive operational info to file
+        if category != .keyboard {
+            writeToFile(message, level: "INFO", category: category)
+        }
     }
     
-    // Error logging - always logged
+    // Error logging - system errors only, no user data
     static func error(_ message: String, category: Category = .main) {
         category.logger.error("\(message)")
-        // Only write errors to file
-        writeToFile(message, level: "ERROR", category: category)
+        // Only write non-keyboard errors to file for privacy
+        if category != .keyboard {
+            writeToFile(message, level: "ERROR", category: category)
+        }
     }
     
     // Warning logging
     static func warning(_ message: String, category: Category = .main) {
         category.logger.warning("\(message)")
-        // Only write warnings to file
-        writeToFile(message, level: "WARNING", category: category)
+        // Only write non-keyboard warnings to file for privacy
+        if category != .keyboard {
+            writeToFile(message, level: "WARNING", category: category)
+        }
     }
     
     // Get log file path for debugging
