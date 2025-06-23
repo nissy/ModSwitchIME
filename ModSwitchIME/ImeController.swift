@@ -76,10 +76,7 @@ class ImeController: ErrorHandler {
                 // Update with new data
                 self.inputSourceCache = cacheData
                 
-                Logger.debug(
-                    "Cache refreshed: \(self.inputSourceCache.count) sources (limit: \(self.maxCacheSize))", 
-                    category: .ime
-                )
+                // Cache refreshed with new sources
             }
         }
     }
@@ -90,7 +87,7 @@ class ImeController: ErrorHandler {
         for sourceID in englishSources {
             do {
                 try selectInputSource(sourceID)
-                Logger.debug("Switched to English: \(sourceID)", category: .ime)
+                // Successfully switched to English
                 return
             } catch {
                 // Try next
@@ -106,7 +103,7 @@ class ImeController: ErrorHandler {
     }
     
     func toggleByCmd(isLeft: Bool) {
-        Logger.debug("Cmd toggle: \(isLeft ? "left" : "right")", category: .ime)
+        // Toggle IME based on left/right Cmd
         
         if isLeft {
             // Left cmd: Switch to English
@@ -141,7 +138,7 @@ class ImeController: ErrorHandler {
         
         // If switching to the same IME, skip
         if currentIME == imeId {
-            Logger.debug("Already on target IME: \(imeId), skipping switch", category: .ime)
+            // Already on target IME, skipping switch
             return
         }
         
