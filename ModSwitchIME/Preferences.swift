@@ -232,7 +232,6 @@ class Preferences: ObservableObject {
         // Load modifier key mappings
         self.modifierKeyMappings = loadModifierKeyMappings()
         self.modifierKeyEnabled = loadModifierKeyEnabled()
-        
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
@@ -457,8 +456,12 @@ class Preferences: ObservableObject {
     func setIME(_ imeId: String?, for key: ModifierKey) {
         if let imeId = imeId, !imeId.isEmpty {
             modifierKeyMappings[key] = imeId
+            // Automatically enable the key when IME is set
+            modifierKeyEnabled[key] = true
         } else {
             modifierKeyMappings.removeValue(forKey: key)
+            // Disable the key when IME is removed
+            modifierKeyEnabled[key] = false
         }
     }
     

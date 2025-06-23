@@ -33,6 +33,12 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func initializeComponents() {
+        // Log the file path on startup
+        if let logPath = Logger.getLogFilePath() {
+            Logger.info("Debug log file: \(logPath)", category: .main)
+            print("ModSwitchIME Debug Log: \(logPath)")
+        }
+        
         checkAccessibilityPermissions()
         setupMenuBar()
         setupKeyMonitor()
