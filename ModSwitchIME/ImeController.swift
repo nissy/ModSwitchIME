@@ -136,23 +136,54 @@ class ImeController: ErrorHandler {
             return
         }
         
-        // Skip getCurrentInputSource check - it's too slow
-        // Just switch directly
+        // Get current input source before switching
+        let currentIME = getCurrentInputSource()
         
-        // Removed logging here to reduce overhead during rapid switching
+        // If switching to the same IME, skip
+        if currentIME == imeId {
+            Logger.debug("Already on target IME: \(imeId), skipping switch", category: .ime)
+            return
+        }
         
         do {
             try selectInputSource(imeId)
+            
+            // Verify the switch happened
+            let newID = getCurrentInputSource()
+            if newID != imeId {
+                Logger.warning("IME switch may have failed: requested \(imeId), got \(newID)", category: .ime)
+            }
         } catch {
             let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
             handleError(imeError)
         }
     }
     
+    private func getAlternativeIME(excluding: String) -> String? {
+        // Try to find an alternative IME for temporary switching
+        if excluding != "com.apple.keylayout.ABC" {
+            return "com.apple.keylayout.ABC"
+        }
+        // Find any other available IME
+        for (id, _) in inputSourceCache {
+            if id != excluding {
+                return id
+            }
+        }
+        return nil
+    }
+    
     func selectInputSource(_ inputSourceID: String) throws {
         // Check cache first for fast path
         if let cachedSource = inputSourceCache[inputSourceID] {
             TISSelectInputSource(cachedSource)
+            
+            // Debug: Verify the switch actually happened
+            let newID = getCurrentInputSource()
+            if newID != inputSourceID {
+                Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
+            }
+            
             return
         }
         
@@ -171,6 +202,13 @@ class ImeController: ErrorHandler {
                     
                     // Update cache without blocking
                     inputSourceCache[inputSourceID] = inputSource
+                    
+                    // Debug: Verify the switch actually happened
+                    let newID = getCurrentInputSource()
+                    if newID != inputSourceID {
+                        Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
+                    }
+                    
                     return
                 }
             }
