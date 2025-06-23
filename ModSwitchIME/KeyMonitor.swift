@@ -25,8 +25,9 @@ class KeyMonitor {
     private var keyPressTimestamps: [ModifierKey: CFAbsoluteTime] = [:]
     private var lastPressedKey: ModifierKey?
     private var multiKeyPressKeys: Set<ModifierKey> = []  // Track all keys involved in multi-key press
-    private var keySwitchedOnPress: Set<ModifierKey> = []  // Track keys that already switched IME on press
     private var isFirstKeyPress = true  // Track if this is the very first key press
+    private var nonModifierKeyPressed = false  // Track if any non-modifier key is pressed
+    private var modifierKeysWithNonModifierPress: Set<ModifierKey> = []  // Track which modifier keys had non-modifier keys pressed during their hold
     
     // Idle timer related
     private var idleTimer: Timer?
@@ -55,8 +56,10 @@ class KeyMonitor {
             return
         }
         
-        // Privacy protection: Only monitor modifier key events (flagsChanged)
-        let eventMask = (1 << CGEventType.flagsChanged.rawValue)
+        // Monitor modifier keys and regular key events to detect shortcuts
+        let eventMask = (1 << CGEventType.flagsChanged.rawValue) |
+                       (1 << CGEventType.keyDown.rawValue) |
+                       (1 << CGEventType.keyUp.rawValue)
         
         // Create event tap
         guard let eventTap = CGEvent.tapCreate(
@@ -121,7 +124,8 @@ class KeyMonitor {
         keyPressTimestamps.removeAll()
         lastPressedKey = nil
         multiKeyPressKeys.removeAll()
-        keySwitchedOnPress.removeAll()
+        nonModifierKeyPressed = false
+        modifierKeysWithNonModifierPress.removeAll()
         
         Logger.info("KeyMonitor stopped", category: .keyboard)
     }
@@ -133,6 +137,16 @@ class KeyMonitor {
         switch type {
         case .flagsChanged:
             handleFlagsChanged(event: event)
+        case .keyDown:
+            nonModifierKeyPressed = true
+            // When non-modifier key is pressed, mark all currently pressed modifier keys
+            for (key, _) in keyPressTimestamps {
+                modifierKeysWithNonModifierPress.insert(key)
+            }
+            // Non-modifier key pressed - don't log content for privacy
+        case .keyUp:
+            nonModifierKeyPressed = false
+            // Non-modifier key released
         case .tapDisabledByTimeout:
             Logger.error("Event tap disabled by timeout", category: .keyboard)
             if let eventTap = eventTap {
@@ -263,22 +277,8 @@ class KeyMonitor {
                 // Either this key has no IME, or no other IME-configured keys are pressed
                 lastPressedKey = modifierKey
                 
-                // For single key press, we only switch if:
-                // 1. The key has IME configured
-                // 2. No other keys are pressed
-                // 3. This is NOT the very first key press in the session
-                if hasIME && otherPressedKeys.isEmpty && !isFirstKeyPress {
-                    // Single key press - switch IME immediately
-                    if let targetIME = preferences.getIME(for: modifierKey) {
-                        let currentIME = imeController.getCurrentInputSource()
-                        if currentIME != targetIME {
-                            Logger.info("Single key IME switch on press: \(modifierKey.displayName) -> \(targetIME)", category: .keyboard)
-                            imeController.switchToSpecificIME(targetIME)
-                            // Mark that we already switched for this key
-                            keySwitchedOnPress.insert(modifierKey)
-                        }
-                    }
-                }
+                // For single key press: Don't switch on key down
+                // We need to wait for key up to check if other keys were pressed
                 
                 // Clear the first key press flag if this is the first key
                 if isFirstKeyPress && otherPressedKeys.isEmpty {
@@ -298,12 +298,11 @@ class KeyMonitor {
             
             // Remove this key from multiKeyPressKeys AFTER handling the release
             multiKeyPressKeys.remove(modifierKey)
+            modifierKeysWithNonModifierPress.remove(modifierKey)
             
             // Clean up multiKeyPressKeys: remove any keys that are no longer pressed
             multiKeyPressKeys = multiKeyPressKeys.filter { keyPressTimestamps[$0] != nil }
             
-            // Remove from keySwitchedOnPress
-            keySwitchedOnPress.remove(modifierKey)
             
             // Multi-key cleanup complete
             
@@ -316,6 +315,7 @@ class KeyMonitor {
                     // Force removing Command key due to flag state
                     keyPressTimestamps.removeValue(forKey: key)
                     multiKeyPressKeys.remove(key)
+                    modifierKeysWithNonModifierPress.remove(key)
                 }
             }
             
@@ -324,7 +324,8 @@ class KeyMonitor {
                 lastPressedKey = nil
                 // Ensure multiKeyPressKeys is completely clear when no keys are pressed
                 multiKeyPressKeys.removeAll()
-                keySwitchedOnPress.removeAll()
+                // Clear all modifier keys that had non-modifier presses
+                modifierKeysWithNonModifierPress.removeAll()
                 // Reset first key press flag when all keys are released
                 isFirstKeyPress = true
                 // All keys released - cleared all state
@@ -357,13 +358,13 @@ class KeyMonitor {
         
         let wasInvolvedInMultiKeyPress = multiKeyPressKeys.contains(modifierKey)
         
+        // Check if this modifier key had any non-modifier key pressed during its hold
+        let hadNonModifierKeyPress = modifierKeysWithNonModifierPress.contains(modifierKey)
+        
         // Check if IME switch should occur on release
         
-        // Check if we already switched on key press
-        let alreadySwitchedOnPress = keySwitchedOnPress.contains(modifierKey)
-        
-        if !otherKeysPressed && !wasInvolvedInMultiKeyPress && !alreadySwitchedOnPress {
-            // Single key press scenario - only switch if we haven't already switched on press
+        if !otherKeysPressed && !wasInvolvedInMultiKeyPress && !hadNonModifierKeyPress {
+            // Single key press scenario - switch on release only if no non-modifier key was pressed during the hold
             let currentIME = imeController.getCurrentInputSource()
             
             // Only switch if it's different from current IME
@@ -563,12 +564,14 @@ class KeyMonitor {
         for key in keysToRemove {
             keyPressTimestamps.removeValue(forKey: key)
             multiKeyPressKeys.remove(key)
+            modifierKeysWithNonModifierPress.remove(key)
             // Force sync removed key
         }
         
         if keyPressTimestamps.isEmpty {
             lastPressedKey = nil
             multiKeyPressKeys.removeAll()
+            modifierKeysWithNonModifierPress.removeAll()
             // Force sync cleared all state
         }
     }

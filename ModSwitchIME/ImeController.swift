@@ -144,12 +144,6 @@ class ImeController: ErrorHandler {
         
         do {
             try selectInputSource(imeId)
-            
-            // Verify the switch happened
-            let newID = getCurrentInputSource()
-            if newID != imeId {
-                Logger.warning("IME switch may have failed: requested \(imeId), got \(newID)", category: .ime)
-            }
         } catch {
             let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
             handleError(imeError)
@@ -175,12 +169,6 @@ class ImeController: ErrorHandler {
         if let cachedSource = inputSourceCache[inputSourceID] {
             TISSelectInputSource(cachedSource)
             
-            // Debug: Verify the switch actually happened
-            let newID = getCurrentInputSource()
-            if newID != inputSourceID {
-                Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
-            }
-            
             return
         }
         
@@ -199,12 +187,6 @@ class ImeController: ErrorHandler {
                     
                     // Update cache without blocking
                     inputSourceCache[inputSourceID] = inputSource
-                    
-                    // Debug: Verify the switch actually happened
-                    let newID = getCurrentInputSource()
-                    if newID != inputSourceID {
-                        Logger.warning("IME switch failed: requested \(inputSourceID), got \(newID)", category: .ime)
-                    }
                     
                     return
                 }
