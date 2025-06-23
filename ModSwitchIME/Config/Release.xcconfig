@@ -1,0 +1,23 @@
+// Release.xcconfig
+// Release configuration for ModSwitchIME
+
+// Include base configuration
+#include "Base.xcconfig"
+
+// Release-specific settings
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+ENABLE_TESTABILITY = NO
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+
+// Code signing for release builds
+CODE_SIGN_IDENTITY = Developer ID Application
+CODE_SIGN_STYLE = Manual
+
+// Hardened runtime for notarization
+ENABLE_HARDENED_RUNTIME = YES
+
+// Strip debug symbols
+DEPLOYMENT_POSTPROCESSING = YES
+STRIP_INSTALLED_PRODUCT = YES
+STRIP_STYLE = non-global

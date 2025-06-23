@@ -16,7 +16,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     
-    // 権限要求の重複防止用
+    // Prevent duplicate permission requests
     private var isShowingPermissionAlert = false
     private var lastPermissionCheckTime = Date(timeIntervalSince1970: 0)
     
@@ -33,10 +33,9 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func initializeComponents() {
-        // Log the file path on startup
+        // Log the file path on startup for debugging purposes
         if let logPath = Logger.getLogFilePath() {
             Logger.info("Debug log file: \(logPath)", category: .main)
-            Logger.info("ModSwitchIME Debug Log: \(logPath)", category: .main)
         }
         
         checkAccessibilityPermissions()
@@ -62,13 +61,13 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private func showAccessibilityAlert() {
         // Ensure alert is shown on main thread
         DispatchQueue.main.async {
-            // 重複表示を防ぐ
+            // Prevent duplicate display
             guard !self.isShowingPermissionAlert else {
                 Logger.debug("Permission alert already showing, skipping")
                 return
             }
             
-            // 短時間内の連続要求を防ぐ（10秒以内は無視）
+            // Prevent consecutive requests within a short time (ignore within 10 seconds)
             let now = Date()
             if now.timeIntervalSince(self.lastPermissionCheckTime) < 10 {
                 Logger.debug("Permission alert requested too recently, skipping")

@@ -9,7 +9,7 @@ struct ModSwitchIMEApp: App {
     }
     
     var body: some Scene {
-        // Settingsシーンのみを定義（WindowGroupは不要）
+        // Define only Settings scene (WindowGroup is not needed)
         Settings {
             PreferencesView()
                 .environmentObject(menuBarApp.preferences)

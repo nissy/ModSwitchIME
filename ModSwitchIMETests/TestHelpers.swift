@@ -13,7 +13,6 @@ class FixedMockImeController: ImeController {
     override func switchToSpecificIME(_ targetIMEId: String) {
         switchToSpecificIMECalls.append((ime: targetIMEId, time: CFAbsoluteTimeGetCurrent()))
         currentIME = targetIMEId
-        // Mock switching to \(targetIMEId)
     }
     
     override func getCurrentInputSource() -> String {

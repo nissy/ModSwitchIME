@@ -34,10 +34,11 @@ ModSwitchIME is a macOS menu bar application that allows you to instantly switch
 Choose from any IME registered in your system.
 
 #### How it works
-- Press modifier key alone → Switch to assigned IME
-- Modifier key + other keys → Normal shortcuts (Cmd+C, Cmd+V, etc.)
-- Distinguishes between left and right modifier keys
-- Detection time adjustable from 0.1 to 1.0 seconds (default: 0.3 seconds)
+- **Single key press**: Press and release modifier key alone → Switch to assigned IME
+- **Multi-key press**: Press multiple modifier keys → Switch to the IME of the last pressed key
+- **Normal shortcuts**: Modifier key + other keys → Standard shortcuts work as usual (Cmd+C, Cmd+V, etc.)
+- **Left/Right distinction**: Treats left and right modifier keys as separate keys
+- **Instant switching**: IME switches immediately upon key release (no delay needed)
 
 #### Supported IMEs
 - **Japanese**: Kotoeri, Google Japanese Input, ATOK, Kawasemi, etc.
@@ -46,7 +47,20 @@ Choose from any IME registered in your system.
 - **Others**: Vietnamese, Thai, Russian, Arabic, and all system-registered IMEs
 - Full support for third-party IMEs
 
-### 2. Auto-Switch on Idle
+### 2. Advanced IME Switching Features
+
+#### Multi-Key Press (Simultaneous Keys)
+When you press multiple modifier keys configured with IMEs:
+- The IME switches to the one assigned to the **last pressed key**
+- Only works when **both keys have IMEs assigned**
+- Example: Left Cmd (English) + Right Cmd (Japanese) → Switches to Japanese
+
+#### Smart Detection
+- Distinguishes between single key press and key combinations
+- Prevents accidental switching during shortcuts (Cmd+W, Ctrl+Tab, etc.)
+- Works seamlessly with your existing keyboard shortcuts
+
+### 3. Auto-Switch on Idle
 
 #### Settings
 - **Enable/Disable**: Toggle switch
@@ -61,7 +75,7 @@ Choose from any IME registered in your system.
 - Does not detect mouse activity (keyboard only)
 - Returns to normal operation on key input
 
-### 3. Real-time Settings Update
+### 4. Real-time Settings Update
 
 - All settings apply instantly
 - No app restart required
@@ -72,7 +86,7 @@ Choose from any IME registered in your system.
   - Idle time modification
   - Target IME selection
 
-### 4. Menu Bar Features
+### 5. Menu Bar Features
 
 #### Menu Items
 - **About ModSwitchIME** - Version information and privacy policy
@@ -82,20 +96,20 @@ Choose from any IME registered in your system.
 - **Restart ModSwitchIME** - Restart the application (⌘R)
 - **Quit** - Exit application (⌘Q)
 
-### 5. Automatic Accessibility Permission Detection
+### 6. Automatic Accessibility Permission Detection
 
 - Checks permission status on app launch (no prompt shown)
 - Checks permission status on each menu click
 - Automatically starts key monitoring when permission is granted
 - Visual feedback (✓ icon) when permission is granted
 
-### 6. Launch at Login
+### 7. Launch at Login
 
 - Easy on/off toggle from menu
 - Uses SMAppService API
 - Registers as system startup item
 
-### 7. Performance Characteristics
+### 8. Performance Characteristics
 
 - **Startup time**: Under 1 second
 - **IME switch speed**: Under 15 milliseconds
@@ -103,7 +117,7 @@ Choose from any IME registered in your system.
 - **Memory usage**: Under 25MB
 - **Battery impact**: Minimal
 
-### 8. IME Selection Interface
+### 9. IME Selection Interface
 
 - **Language-based grouping**: IMEs are organized by language (Japanese, Chinese, Korean, etc.)
 - **Visual icons**: Each IME displays with language-specific flag icons
@@ -152,10 +166,10 @@ ModSwitchIME is designed with privacy and security as core principles:
 - Assign IME to each of 8 modifier keys
 - Default: No automatic assignments (manual configuration required)
 
-#### Detection Time (Wait Before Switching)
-- Modifier key alone detection time: 0.1-1.0 seconds (100-1000ms)
-- Default: 0.3 seconds (300ms), disabled by default
-- When disabled, keys switch immediately upon release
+#### Switching Behavior
+- **Instant switching**: IME switches immediately when you release a modifier key
+- **No delay required**: Unlike other tools, no waiting time needed
+- **Smart detection**: Automatically distinguishes between single key press and shortcuts
 
 #### Auto-Switch on Idle
 - Idle time: 1-300 seconds
@@ -168,14 +182,18 @@ ModSwitchIME is designed with privacy and security as core principles:
 | **IME switching focused** | ✅ Purpose-built | ❌ General-purpose tool |
 | **Switch to any IME** | ✅ 100% reliable | ❌ CJK languages often fail |
 | **Left/Right key distinction** | ✅ 8 keys individually | ❌ Difficult |
+| **Multi-key IME switching** | ✅ Built-in support | ❌ Complex configuration |
+| **Instant switching** | ✅ No delay needed | ❌ Requires timeout |
 | **Configuration** | ✅ GUI | ❌ JSON editing |
 | **Auto-switch on idle** | ✅ Built-in | ❌ Not supported |
 
 ### Why Choose ModSwitchIME
 
-1. **IME switching focused** - Simple with no unnecessary features
-2. **High reliability** - Reliably switches to all IMEs
-3. **Easy configuration** - No technical knowledge required
+1. **IME switching focused** - Designed specifically for multilingual users
+2. **Instant & reliable** - No delays, works with all IMEs including CJK languages
+3. **Advanced features** - Multi-key switching, auto-switch on idle, all in one app
+4. **Easy configuration** - Simple GUI, no technical knowledge required
+5. **Privacy-first** - Only monitors modifier keys, never captures your typing
 
 ## Troubleshooting
 

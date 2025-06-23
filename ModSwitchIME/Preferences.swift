@@ -401,7 +401,7 @@ class Preferences: ObservableObject {
     // MARK: - Modifier Key Mapping Persistence
     
     private func saveModifierKeyMappings() {
-        // 空の場合は保存しない（初回起動時の対策）
+        // Don't save if empty (prevents issues on first launch)
         if modifierKeyMappings.isEmpty {
             UserDefaults.standard.removeObject(forKey: "modifierKeyMappings")
             UserDefaults.standard.synchronize()
@@ -424,7 +424,7 @@ class Preferences: ObservableObject {
     }
     
     private func saveModifierKeyEnabled() {
-        // 空の場合は保存しない（初回起動時の対策）
+        // Don't save if empty (prevents issues on first launch)
         if modifierKeyEnabled.isEmpty {
             UserDefaults.standard.removeObject(forKey: "modifierKeyEnabled")
             UserDefaults.standard.synchronize()

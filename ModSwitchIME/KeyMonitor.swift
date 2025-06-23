@@ -181,7 +181,7 @@ class KeyMonitor {
         }
         let now = CFAbsoluteTimeGetCurrent()
         
-        Logger.info(
+        Logger.debug(
             "\(modifierKey.displayName) flags changed - isKeyDown: \(isKeyDown), flags: \(flags.rawValue), keyFlag: \(modifierKey.flagMask.rawValue)",
             category: .keyboard
         )
@@ -317,7 +317,7 @@ class KeyMonitor {
         // Check if other keys are currently pressed
         let otherKeysPressed = !keyPressTimestamps.isEmpty  // We already removed the current key
         
-        Logger.info(
+        Logger.debug(
             "\(modifierKey.displayName) up - duration: \(Int(pressDuration * 1000))ms, otherKeys: \(otherKeysPressed), target: \(targetIME)",
             category: .keyboard
         )

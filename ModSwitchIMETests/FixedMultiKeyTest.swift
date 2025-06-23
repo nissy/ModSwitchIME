@@ -37,19 +37,19 @@ class FixedMultiKeyTest: XCTestCase {
     func testUserReportedProblemIsFixed() {
         #if DEBUG
         // Test the exact sequence user reported:
-        // 左CMD押す → 右CMD押す（切り替わっている） → 右CMD離す → 左CMD離す → 右CMD押す → 左CMD押す（切り替わっていない）
+        // Press left CMD → Press right CMD (switches) → Release right CMD → Release left CMD → Press right CMD → Press left CMD (doesn't switch)
         
-        print("=== Testing User Reported Problem ===")
+        // Testing User Reported Problem
         
-        // Step 1: 左CMD押す
-        print("1. 左CMD押す")
+        // Step 1: Press left CMD
+        // 1. Press left CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
             flags: ModifierKey.leftCommand.flagMask
         )
         
-        // Step 2: 右CMD押す（切り替わっている）
-        print("2. 右CMD押す（should switch to ATOK）")
+        // Step 2: Press right CMD (switches)
+        // 2. Press right CMD (should switch to ATOK)
         let initialCalls = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
@@ -62,8 +62,8 @@ class FixedMultiKeyTest: XCTestCase {
                       "com.justsystems.inputmethod.atok34.Japanese",
                       "Should switch to ATOK")
         
-        // Step 3: 右CMD離す
-        print("3. 右CMD離す")
+        // Step 3: Release right CMD
+        // 3. Release right CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
             flags: ModifierKey.leftCommand.flagMask
@@ -73,8 +73,8 @@ class FixedMultiKeyTest: XCTestCase {
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, initialCalls + 1,
                       "Should NOT switch on right CMD release")
         
-        // Step 4: 左CMD離す
-        print("4. 左CMD離す")
+        // Step 4: Release left CMD
+        // 4. Release left CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
             flags: []
@@ -84,15 +84,15 @@ class FixedMultiKeyTest: XCTestCase {
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, initialCalls + 1,
                       "Should NOT switch on left CMD release")
         
-        // Step 5: 右CMD押す  
-        print("5. 右CMD押す")
+        // Step 5: Press right CMD  
+        // 5. Press right CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
             flags: ModifierKey.rightCommand.flagMask
         )
         
-        // Step 6: 左CMD押す（This is where the bug was - should switch now）
-        print("6. 左CMD押す（should switch to ABC - this was the bug）")
+        // Step 6: Press left CMD (This is where the bug was - should switch now)
+        // 6. Press left CMD (should switch to ABC - this was the bug)
         let beforeStep6 = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
@@ -109,21 +109,21 @@ class FixedMultiKeyTest: XCTestCase {
                       "Should switch to ABC")
         
         // Clean up: release both keys
-        print("7. 左CMD離す")
+        // 7. Release left CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
             flags: ModifierKey.rightCommand.flagMask
         )
         
-        print("8. 右CMD離す")
+        // 8. Release right CMD
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
             flags: []
         )
         
-        print("=== Test Summary ===")
+        // Test Summary
         // Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)
-        print("Expected: 2 (step 2 and step 6)")
+        // Expected: 2 (step 2 and step 6)
         
         for (index, call) in mockImeController.switchToSpecificIMECalls.enumerated() {
             // Switch \(index + 1): \(call.ime)
@@ -137,73 +137,73 @@ class FixedMultiKeyTest: XCTestCase {
     func testActualUserBugReport() {
         #if DEBUG
         // Test the ACTUAL user reported sequence:
-        // 左CMD押す（切り替わる）→ 右CMD押す（切り替わる）→ 左CMD離す（切り替わるここが問題！）→ 右CMD離す（切り替わらない）
+        // Press left CMD (switches) → Press right CMD (switches) → Release left CMD (switches - this is the problem!) → Release right CMD (doesn't switch)
         
-        print("\n=== Testing ACTUAL User Reported Problem ===")
-        print("User says: 左CMD押す（切り替わる）→ 右CMD押す（切り替わる）→ 左CMD離す（切り替わるここが問題！）→ 右CMD離す（切り替わらない）")
+        // Testing ACTUAL User Reported Problem
+        // User says: Press left CMD (switches) → Press right CMD (switches) → Release left CMD (switches - this is the problem!) → Release right CMD (doesn't switch)
         
         // Clear calls
         mockImeController.switchToSpecificIMECalls.removeAll()
         
-        // Step 1: 左CMD押す（切り替わる）
-        print("\n1. 左CMD押す")
+        // Step 1: Press left CMD (switches)
+        // 1. Press left CMD
         let step1Before = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
             flags: ModifierKey.leftCommand.flagMask
         )
         let step1After = mockImeController.switchToSpecificIMECalls.count
-        print("   Step 1 switches: \(step1After - step1Before)")
+        // Step 1 switches: \(step1After - step1Before)
         
-        // Step 2: 右CMD押す（切り替わる）
-        print("\n2. 右CMD押す（should switch to ATOK）")
+        // Step 2: Press right CMD (switches)
+        // 2. Press right CMD (should switch to ATOK)
         let step2Before = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
             flags: [ModifierKey.leftCommand.flagMask, ModifierKey.rightCommand.flagMask]
         )
         let step2After = mockImeController.switchToSpecificIMECalls.count
-        print("   Step 2 switches: \(step2After - step2Before)")
+        // Step 2 switches: \(step2After - step2Before)
         
         XCTAssertEqual(step2After, step2Before + 1, "Should switch on multi-key press")
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.last?.ime, 
                       "com.justsystems.inputmethod.atok34.Japanese",
                       "Should switch to ATOK")
         
-        // Step 3: 左CMD離す（切り替わるここが問題！）
-        print("\n3. 左CMD離す（should NOT switch - this is the bug!)") 
+        // Step 3: Release left CMD (switches - this is the problem!)
+        // 3. Release left CMD (should NOT switch - this is the bug!) 
         let step3Before = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.leftCommand.keyCode,
             flags: ModifierKey.rightCommand.flagMask  // Only right CMD still pressed
         )
         let step3After = mockImeController.switchToSpecificIMECalls.count
-        print("   Step 3 switches: \(step3After - step3Before)")
+        // Step 3 switches: \(step3After - step3Before)
         
         // THIS IS THE KEY TEST - should NOT switch on key release during multi-key
         if step3After > step3Before {
-            print("   ❌ BUG REPRODUCED: Left CMD release triggered unwanted switch!")
-            print("   Switched to: \(mockImeController.switchToSpecificIMECalls.last?.ime ?? "unknown")")
+            // BUG REPRODUCED: Left CMD release triggered unwanted switch!
+            // Switched to: \(mockImeController.switchToSpecificIMECalls.last?.ime ?? "unknown")
             XCTFail("Left CMD release should NOT trigger IME switch during multi-key press")
         } else {
-            print("   ✅ Correct: Left CMD release did NOT trigger switch")
+            // Correct: Left CMD release did NOT trigger switch
         }
         
-        // Step 4: 右CMD離す（切り替わらない）
-        print("\n4. 右CMD離す（should NOT switch）")
+        // Step 4: Release right CMD (doesn't switch)
+        // 4. Release right CMD (should NOT switch)
         let step4Before = mockImeController.switchToSpecificIMECalls.count
         keyMonitor.simulateFlagsChanged(
             keyCode: ModifierKey.rightCommand.keyCode,
             flags: []  // All keys released
         )
         let step4After = mockImeController.switchToSpecificIMECalls.count
-        print("   Step 4 switches: \(step4After - step4Before)")
+        // Step 4 switches: \(step4After - step4Before)
         
         XCTAssertEqual(step4After, step4Before, "Right CMD release should NOT switch")
         
-        print("\n=== Final Summary ===")
+        // Final Summary
         // Total IME switches: \(mockImeController.switchToSpecificIMECalls.count)
-        print("Expected: 1 (only step 2)")
+        // Expected: 1 (only step 2)
         
         for (index, call) in mockImeController.switchToSpecificIMECalls.enumerated() {
             // Switch \(index + 1): \(call.ime)
