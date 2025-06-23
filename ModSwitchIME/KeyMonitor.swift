@@ -304,15 +304,14 @@ class KeyMonitor {
         )
         
         // IME switching rules:
-        // 1. For single key press: switch on release if no other keys are pressed
+        // 1. For single key press: switch on release if no other keys are pressed (any duration)
         // 2. For multi-key press: NEVER switch on release (already switched on key down)
-        // 3. Press duration must be within timeout
         
         let wasInvolvedInMultiKeyPress = multiKeyPressKeys.contains(modifierKey)
         
         Logger.debug("\(modifierKey.displayName) release check - wasInvolvedInMultiKeyPress: \(wasInvolvedInMultiKeyPress), multiKeyPressKeys: \(multiKeyPressKeys.map { $0.displayName }), otherKeysPressed: \(otherKeysPressed), pressDuration: \(Int(pressDuration * 1000))ms", category: .keyboard)
         
-        if !otherKeysPressed && pressDuration < singleKeyTimeout && !wasInvolvedInMultiKeyPress {
+        if !otherKeysPressed && !wasInvolvedInMultiKeyPress {
             // Single key press scenario
             let currentIME = imeController.getCurrentInputSource()
             
@@ -339,7 +338,7 @@ class KeyMonitor {
         } else if wasInvolvedInMultiKeyPress {
             Logger.debug("IME switch skipped: \(modifierKey.displayName) was involved in multi-key press", category: .keyboard)
         } else {
-            Logger.debug("IME switch skipped: timeout exceeded (\(Int(pressDuration * 1000))ms > \(Int(singleKeyTimeout * 1000))ms)", category: .keyboard)
+            Logger.debug("IME switch skipped: other keys are still pressed", category: .keyboard)
         }
     }
     
