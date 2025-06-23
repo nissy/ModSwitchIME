@@ -72,10 +72,11 @@ struct PreferencesView: View {
     @State private var showIdleIMEPicker = false
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                
-                // Idle timeout settings
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    
+                    // Idle timeout settings
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Auto Switch on Idle")
                         .font(.headline)
@@ -144,14 +145,17 @@ struct PreferencesView: View {
                             }
                             .frame(width: 150)
                         }
+                        .padding(.leading, 20)
                         
                         Text("Only switch if key is released within this time")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                            .padding(.leading, 20)
                     } else {
                         Text("Keys switch immediately when released (may conflict with shortcuts)")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                            .padding(.leading, 20)
                     }
                 }
                 
@@ -176,11 +180,12 @@ struct PreferencesView: View {
                     }
                 }
                 
-                Spacer()
+                    Spacer(minLength: 20)
+                }
+                .padding()
             }
-            .padding()
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: 650)
         .background(Color(NSColor.windowBackgroundColor))
         .sheet(item: $selectedModifierKey) { key in
             ModifierKeyInputSourcePicker(
