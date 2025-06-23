@@ -133,15 +133,8 @@ class ImeController: ErrorHandler {
             return
         }
         
-        // Get current input source before switching
-        let currentIME = getCurrentInputSource()
-        
-        // If switching to the same IME, skip
-        if currentIME == imeId {
-            // Already on target IME, skipping switch
-            return
-        }
-        
+        // Direct switch without checking current IME for better performance
+        // TIS API handles switching to the same IME efficiently
         do {
             try selectInputSource(imeId)
         } catch {

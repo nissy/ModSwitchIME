@@ -138,14 +138,20 @@ class KeyMonitor {
         case .flagsChanged:
             handleFlagsChanged(event: event)
         case .keyDown:
-            nonModifierKeyPressed = true
-            // When non-modifier key is pressed, mark all currently pressed modifier keys
-            for (key, _) in keyPressTimestamps {
-                modifierKeysWithNonModifierPress.insert(key)
+            // Only process if modifier keys are pressed (performance optimization)
+            if !keyPressTimestamps.isEmpty {
+                nonModifierKeyPressed = true
+                // When non-modifier key is pressed, mark all currently pressed modifier keys
+                for (key, _) in keyPressTimestamps {
+                    modifierKeysWithNonModifierPress.insert(key)
+                }
             }
             // Non-modifier key pressed - don't log content for privacy
         case .keyUp:
-            nonModifierKeyPressed = false
+            // Only update if we were tracking non-modifier key press
+            if nonModifierKeyPressed {
+                nonModifierKeyPressed = false
+            }
             // Non-modifier key released
         case .tapDisabledByTimeout:
             Logger.error("Event tap disabled by timeout", category: .keyboard)
@@ -303,7 +309,6 @@ class KeyMonitor {
             // Clean up multiKeyPressKeys: remove any keys that are no longer pressed
             multiKeyPressKeys = multiKeyPressKeys.filter { keyPressTimestamps[$0] != nil }
             
-            
             // Multi-key cleanup complete
             
             // IMPORTANT: For left/right Command keys that share the same flagMask,
@@ -365,26 +370,10 @@ class KeyMonitor {
         
         if !otherKeysPressed && !wasInvolvedInMultiKeyPress && !hadNonModifierKeyPress {
             // Single key press scenario - switch on release only if no non-modifier key was pressed during the hold
-            let currentIME = imeController.getCurrentInputSource()
+            Logger.info("Single key IME switch on release: \(modifierKey.displayName) -> \(targetIME)", category: .keyboard)
             
-            // Only switch if it's different from current IME
-            if currentIME != targetIME {
-                Logger.info("Single key IME switch on release: \(modifierKey.displayName) -> \(targetIME)", category: .keyboard)
-                
-                // Clear any stuck state before switching
-                if keyPressTimestamps.isEmpty {
-                    clearStuckModifierState()
-                }
-                
-                imeController.switchToSpecificIME(targetIME)
-                
-                // Ensure event tap is in good state after switching
-                if keyPressTimestamps.isEmpty {
-                    ensureEventTapActive()
-                }
-            } else {
-                // Single key switch skipped: already on target IME
-            }
+            // Direct switch without checking current IME for better performance
+            imeController.switchToSpecificIME(targetIME)
         } else if otherKeysPressed {
             // IME switch skipped: other keys still pressed
         } else if wasInvolvedInMultiKeyPress {
