@@ -5,25 +5,25 @@ import Carbon
 class InputSourceDebugTests: XCTestCase {
     
     func testDebugAllInputSources() {
-        // すべての入力ソースを取得
+        // Get all input sources
         guard let inputSourceList = TISCreateInputSourceList(nil, false).takeRetainedValue() as? [TISInputSource] else {
             XCTFail("Failed to get input source list")
             return
         }
         
-        // === 全入力ソース一覧 ===
-        // 総数: \(inputSourceList.count)
+        // === All input sources list ===
+        // Total count: \(inputSourceList.count)
         
         for (index, inputSource) in inputSourceList.enumerated() {
             debugPrintInputSource(inputSource, index: index)
         }
         
-        // 日本語入力を探す
+        // Find Japanese input
         debugJapaneseInputSources(inputSourceList)
     }
     
     private func debugPrintInputSource(_ inputSource: TISInputSource, index: Int) {
-        // --- 入力ソース #\(index + 1) ---
+        // --- Input source #\(index + 1) ---
         
         // ID
         if let sourceId = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
@@ -31,43 +31,43 @@ class InputSourceDebugTests: XCTestCase {
             // ID: \(cfString as String)
         }
         
-        // ローカライズ名
+        // Localized name
         if let localizedName = TISGetInputSourceProperty(inputSource, kTISPropertyLocalizedName) {
             let cfString = Unmanaged<CFString>.fromOpaque(localizedName).takeUnretainedValue()
-            // 名前: \(cfString as String)
+            // Name: \(cfString as String)
         }
         
         debugPrintInputSourceProperties(inputSource)
     }
     
     private func debugPrintInputSourceProperties(_ inputSource: TISInputSource) {
-        // カテゴリー
+        // Category
         if let category = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) {
             let cfString = Unmanaged<CFString>.fromOpaque(category).takeUnretainedValue()
-            // カテゴリー: \(cfString as String)
+            // Category: \(cfString as String)
         }
         
-        // タイプ
+        // Type
         if let type = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceType) {
             let cfString = Unmanaged<CFString>.fromOpaque(type).takeUnretainedValue()
-            // タイプ: \(cfString as String)
+            // Type: \(cfString as String)
         }
         
-        // 選択可能か
+        // Is selectable
         if let selectablePtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
             let selectable = Unmanaged<CFBoolean>.fromOpaque(selectablePtr).takeUnretainedValue()
-            // 選択可能: \(CFBooleanGetValue(selectable))
+            // Is selectable: \(CFBooleanGetValue(selectable))
         }
         
-        // 有効か
+        // Is enabled
         if let enabledPtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsEnabled) {
             let enabled = Unmanaged<CFBoolean>.fromOpaque(enabledPtr).takeUnretainedValue()
-            // 有効: \(CFBooleanGetValue(enabled))
+            // Is enabled: \(CFBooleanGetValue(enabled))
         }
     }
     
     private func debugJapaneseInputSources(_ inputSourceList: [TISInputSource]) {
-        // === 日本語入力の検索 ===
+        // === Search for Japanese input ===
         let japaneseInputs = inputSourceList.filter { inputSource in
             if let sourceId = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceID) {
                 let cfString = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue() as String
@@ -76,7 +76,7 @@ class InputSourceDebugTests: XCTestCase {
             return false
         }
         
-        // 日本語入力の数: \(japaneseInputs.count)
+        // Number of Japanese inputs: \(japaneseInputs.count)
         for input in japaneseInputs {
             if let sourceId = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) {
                 let cfString = Unmanaged<CFString>.fromOpaque(sourceId).takeUnretainedValue()
@@ -86,13 +86,13 @@ class InputSourceDebugTests: XCTestCase {
     }
     
     func testDebugSelectableInputMethods() {
-        // Preferences.getAvailableInputSources()と同じロジックでテスト
+        // Test with the same logic as Preferences.getAvailableInputSources()
         guard let inputSourceList = TISCreateInputSourceList(nil, false).takeRetainedValue() as? [TISInputSource] else {
             XCTFail("Failed to get input source list")
             return
         }
         
-        // === 選択可能な入力メソッド ===
+        // === Selectable input methods ===
         
         var selectableCount = 0
         for inputSource in inputSourceList {
@@ -111,7 +111,7 @@ class InputSourceDebugTests: XCTestCase {
             }
         }
         
-        // 選択可能な入力ソースの総数: \(selectableCount)
+        // Total count of selectable input sources: \(selectableCount)
     }
     
     func testDebugInputMethodsOnly() {
@@ -120,17 +120,17 @@ class InputSourceDebugTests: XCTestCase {
             return
         }
         
-        // === 入力メソッドのみ（カテゴリーでフィルタ） ===
+        // === Input methods only (filter by category) ===
         
         var inputMethodCount = 0
         for inputSource in inputSourceList {
-            // カテゴリーをチェック
+            // Check category
             guard let categoryPtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceCategory) else {
                 continue
             }
             let category = Unmanaged<CFString>.fromOpaque(categoryPtr).takeUnretainedValue() as String
             
-            // 入力メソッドカテゴリーのみを対象とする
+            // Target only input method category
             if category != (kTISCategoryKeyboardInputSource as String) {
                 continue
             }
@@ -143,16 +143,16 @@ class InputSourceDebugTests: XCTestCase {
                 let name = Unmanaged<CFString>.fromOpaque(localizedName).takeUnretainedValue() as String
                 // \(inputMethodCount). \(name) (\(id))
                 
-                // 選択可能かもチェック
+                // Also check if selectable
                 if let selectablePtr = TISGetInputSourceProperty(inputSource, kTISPropertyInputSourceIsSelectCapable) {
                     let selectable = CFBooleanGetValue(
                         Unmanaged<CFBoolean>.fromOpaque(selectablePtr).takeUnretainedValue()
                     )
-                    // 選択可能: \(selectable)
+                    // Is selectable: \(selectable)
                 }
             }
         }
         
-        // 入力メソッドの総数: \(inputMethodCount)
+        // Total count of input methods: \(inputMethodCount)
     }
 }

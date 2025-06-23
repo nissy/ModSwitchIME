@@ -6,36 +6,36 @@ class PreferencesInputSourceTests: XCTestCase {
     func testGetAvailableInputSources() {
         let sources = Preferences.getAvailableInputSources()
         
-        // システムによっては利用可能な入力ソースが少ない場合もある
+        // Some systems may have fewer available input sources
         if sources.isEmpty {
-            // 警告を出すがテストは通す
+            // Issue warning but pass the test
             Logger.warning(
                 "No available input sources found. This might be expected in test environment.", 
                 category: .tests
             )
         } else {
-            // 各入力ソースにIDと名前があることを確認
+            // Verify each input source has ID and name
             for source in sources {
-                XCTAssertFalse(source.id.isEmpty, "入力ソースのIDが空です")
-                XCTAssertFalse(source.name.isEmpty, "入力ソースの名前が空です")
+                XCTAssertFalse(source.id.isEmpty, "Input source ID is empty")
+                XCTAssertFalse(source.name.isEmpty, "Input source name is empty")
             }
         }
         
-        // 最低限、getAllInputSourcesは何かを返すはず
+        // At minimum, getAllInputSources should return something
         let allSources = Preferences.getAllInputSources()
-        XCTAssertGreaterThan(allSources.count, 0, "システムには少なくとも1つの入力ソースがあるはずです")
+        XCTAssertGreaterThan(allSources.count, 0, "System should have at least one input source")
     }
     
     func testGetAllInputSources() {
         let enabledSources = Preferences.getAllInputSources(includeDisabled: false)
         let allSources = Preferences.getAllInputSources(includeDisabled: true)
         
-        // すべてのソースの数は有効なソースの数以上であるべき
+        // Total sources should be greater than or equal to available sources
         XCTAssertGreaterThanOrEqual(allSources.count, enabledSources.count)
         
-        // 各ソースが有効なプロパティを持つことを確認
+        // Verify each source has valid properties
         for source in allSources {
-            XCTAssertFalse(source.sourceId.isEmpty, "ソースIDが空です")
+            XCTAssertFalse(source.sourceId.isEmpty, "Source ID is empty")
             XCTAssertFalse(source.localizedName.isEmpty, "ローカライズ名が空です")
         }
     }

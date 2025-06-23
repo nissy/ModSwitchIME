@@ -1,0 +1,13 @@
+// Base.xcconfig
+// Base configuration for ModSwitchIME
+
+// Include version configuration
+#include "Version.xcconfig"
+
+// Update Info.plist with version information
+INFOPLIST_KEY_CFBundleShortVersionString = $(MARKETING_VERSION)
+INFOPLIST_KEY_CFBundleVersion = $(CURRENT_PROJECT_VERSION)
+
+// Alternative Info.plist keys (for compatibility)
+CFBundleShortVersionString = $(MARKETING_VERSION)
+CFBundleVersion = $(CURRENT_PROJECT_VERSION)

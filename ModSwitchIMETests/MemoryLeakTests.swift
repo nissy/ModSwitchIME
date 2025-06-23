@@ -83,7 +83,8 @@ class MemoryLeakTests: XCTestCase {
                 _ = imeController.getCurrentInputSource()
                 
                 // Access TIS functions
-                if let inputSourceList = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] {
+                if let inputSourceList = TISCreateInputSourceList(nil, false)?
+                    .takeRetainedValue() as? [TISInputSource] {
                     // Process list
                     _ = inputSourceList.count
                 }

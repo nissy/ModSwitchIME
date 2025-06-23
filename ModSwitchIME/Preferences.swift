@@ -232,7 +232,6 @@ class Preferences: ObservableObject {
         // Load modifier key mappings
         self.modifierKeyMappings = loadModifierKeyMappings()
         self.modifierKeyEnabled = loadModifierKeyEnabled()
-        
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
@@ -402,7 +401,7 @@ class Preferences: ObservableObject {
     // MARK: - Modifier Key Mapping Persistence
     
     private func saveModifierKeyMappings() {
-        // 空の場合は保存しない（初回起動時の対策）
+        // Don't save if empty (prevents issues on first launch)
         if modifierKeyMappings.isEmpty {
             UserDefaults.standard.removeObject(forKey: "modifierKeyMappings")
             UserDefaults.standard.synchronize()
@@ -425,7 +424,7 @@ class Preferences: ObservableObject {
     }
     
     private func saveModifierKeyEnabled() {
-        // 空の場合は保存しない（初回起動時の対策）
+        // Don't save if empty (prevents issues on first launch)
         if modifierKeyEnabled.isEmpty {
             UserDefaults.standard.removeObject(forKey: "modifierKeyEnabled")
             UserDefaults.standard.synchronize()
@@ -457,8 +456,12 @@ class Preferences: ObservableObject {
     func setIME(_ imeId: String?, for key: ModifierKey) {
         if let imeId = imeId, !imeId.isEmpty {
             modifierKeyMappings[key] = imeId
+            // Automatically enable the key when IME is set
+            modifierKeyEnabled[key] = true
         } else {
             modifierKeyMappings.removeValue(forKey: key)
+            // Disable the key when IME is removed
+            modifierKeyEnabled[key] = false
         }
     }
     

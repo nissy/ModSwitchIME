@@ -27,7 +27,10 @@ DMG_PATH = $(PROD_BUILD_DIR)/$(PROJECT_NAME).dmg
 DEVELOPMENT_TEAM ?= $(DEVELOPMENT_TEAM)
 PRODUCT_BUNDLE_IDENTIFIER ?= $(PRODUCT_BUNDLE_IDENTIFIER)
 TEST_BUNDLE_IDENTIFIER ?= $(TEST_BUNDLE_IDENTIFIER)
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "1.0.0")
+# Version management
+VERSION_FILE = VERSION
+VERSION = $(shell cat $(VERSION_FILE) 2>/dev/null || echo "1.0.0")
+BUILD_NUMBER = $(shell date +%Y%m%d%H%M%S)
 BUILD_NUMBER ?= $(shell git rev-list --count HEAD 2>/dev/null || echo "1")
 APPLE_ID ?= $(APPLE_ID)
 APPLE_PASSWORD ?= $(APPLE_PASSWORD)
@@ -93,8 +96,9 @@ build-dev: ## Build and run development version (keeps permissions)
 		-derivedDataPath $(DEV_BUILD_DIR)/DerivedData \
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
-		CODE_SIGN_STYLE=Automatic \
-		CODE_SIGN_IDENTITY="Apple Development" \
+		CODE_SIGN_STYLE=Manual \
+		CODE_SIGN_IDENTITY="Developer ID Application: Yoshihiko Nishida (R7LKF73J2W)" \
+		PROVISIONING_PROFILE_SPECIFIER="" \
 		build
 	@echo "$(GREEN)Copying to dev directory...$(NC)"
 	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_DEBUG) -derivedDataPath $(DEV_BUILD_DIR)/DerivedData -showBuildSettings DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
@@ -413,3 +417,23 @@ status: ## Show project status
 	else \
 		echo "Not installed"; \
 	fi
+
+#===============================================================================
+# VERSION MANAGEMENT
+#===============================================================================
+
+show-version: ## Show version from xcconfig files
+	@echo "$(BLUE)Version from xcconfig:$(NC)"
+	@echo "Marketing Version: $$(grep '^MARKETING_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
+	@echo "Build Number: $$(grep '^CURRENT_PROJECT_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
+
+bump-version: ## Update version (usage: make bump-version VERSION=1.0.1)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "$(RED)Error: VERSION not specified$(NC)"; \
+		echo "Usage: make bump-version VERSION=1.0.1"; \
+		exit 1; \
+	fi
+	@./Scripts/update_version.sh $(VERSION)
+
+bump-build: ## Increment build number only
+	@./Scripts/update_version.sh --build-only

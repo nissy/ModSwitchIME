@@ -14,86 +14,86 @@ class ImeControllerTests: XCTestCase {
         super.tearDown()
     }
     
-    // 右cmdを2回押した場合のテスト
+    // Test when right cmd is pressed twice
     func testRightCmdDoublePress() {
-        // 初期状態: 英語
-        // 1回目の右cmd: 設定されたIMEに切り替え
-        // 2回目の右cmd: 同じIMEのまま（英字モードに切り替わらない）
+        // Initial state: English
+        // First right cmd press: Switch to configured IME
+        // Second right cmd press: Stays with the same IME (Doesn't switch to ASCII mode)
         
-        // Given: 英語入力の状態
+        // Given: English input state
         imeController.forceAscii()
         
-        // When: 右cmdを押す（1回目）
+        // When: Press right cmd (first time)
         imeController.toggleByCmd(isLeft: false)
         let firstPressResult = imeController.getCurrentInputSource()
         
-        // Then: toggleByCmdの仕様により、右cmdは設定されたIMEに切り替える
-        // ただし、テスト環境では実際のIME切り替えができないので、
-        // 現在のシステムIMEの状態に依存する
-        // このテストは実際のIME切り替えの検証ではなく、
-        // toggleByCmdメソッドが正しく呼ばれることを確認する
+        // Then: According to toggleByCmd specification, right cmd switches to configured IME
+        // However, cannot perform actual IME switching in test environment,
+        // so it depends on current system IME state
+        // This test is not for verifying actual IME switching,
+        // but confirms that toggleByCmd method is called correctly
         
-        // When: 右cmdを押す（2回目）
+        // When: Press right cmd (second time)
         imeController.toggleByCmd(isLeft: false)
         let secondPressResult = imeController.getCurrentInputSource()
         
-        // Then: システムの現在のIME状態が返される
-        // テスト環境では実際の切り替えは発生しないため、
-        // firstPressResultとsecondPressResultは同じになる
+        // Then: Returns current system IME state
+        // Since actual switching doesn't occur in test environment,
+        // firstPressResult and secondPressResult will be the same
         XCTAssertEqual(firstPressResult, secondPressResult)
     }
     
-    // 左cmd→右cmdの通常動作テスト
+    // Normal operation test: left cmd → right cmd
     func testNormalToggleBehavior() {
-        // Given: 初期状態
+        // Given: Initial state
         let initialState = imeController.getCurrentInputSource()
         
-        // When: 左cmdを押す
+        // When: Press left cmd
         imeController.toggleByCmd(isLeft: true)
         let leftCmdResult = imeController.getCurrentInputSource()
         
-        // Then: toggleByCmdの仕様により、左cmdは英語への切り替えを試みる
-        // ただし、テスト環境では実際のIME切り替えができないので、
-        // システムの現在のIME状態が返される
+        // Then: According to toggleByCmd specification, left cmd attempts to switch to English
+        // However, cannot perform actual IME switching in test environment,
+        // so returns current system IME state
         
-        // When: 右cmdを押す
+        // When: Press right cmd
         imeController.toggleByCmd(isLeft: false)
         let rightCmdResult = imeController.getCurrentInputSource()
         
-        // Then: システムの現在のIME状態が返される
-        // テスト環境では実際の切り替えは発生しない
+        // Then: Returns current system IME state
+        // Actual switching doesn't occur in test environment
         XCTAssertEqual(leftCmdResult, rightCmdResult)
     }
     
-    // アイドルタイムアウトのテスト
+    // Idle timeout test
     func testIdleTimeout() {
-        // Given: 初期状態
+        // Given: Initial state
         let initialState = imeController.getCurrentInputSource()
         
-        // When: アイドルタイムアウトが発生（forceAsciiを呼ぶ）
+        // When: Idle timeout occurs (call forceAscii)
         imeController.forceAscii()
         let result = imeController.getCurrentInputSource()
         
-        // Then: forceAsciiは英語への切り替えを試みるが、
-        // テスト環境では実際の切り替えは発生しない
+        // Then: forceAscii attempts to switch to English,
+        // but actual switching doesn't occur in test environment
         XCTAssertEqual(initialState, result)
     }
     
-    // メソッド呼び出しのテスト
+    // Method call test
     func testMethodCalls() {
-        // toggleByCmd(isLeft: true) が呼び出し可能であることを確認
+        // Confirm toggleByCmd(isLeft: true) can be called
         XCTAssertNoThrow(imeController.toggleByCmd(isLeft: true))
         
-        // toggleByCmd(isLeft: false) が呼び出し可能であることを確認
+        // Confirm toggleByCmd(isLeft: false) can be called
         XCTAssertNoThrow(imeController.toggleByCmd(isLeft: false))
         
-        // forceAscii() が呼び出し可能であることを確認
+        // Confirm forceAscii() can be called
         XCTAssertNoThrow(imeController.forceAscii())
         
-        // switchToSpecificIME() が呼び出し可能であることを確認
+        // Confirm switchToSpecificIME() can be called
         XCTAssertNoThrow(imeController.switchToSpecificIME("com.apple.keylayout.ABC"))
         
-        // getCurrentInputSource() が文字列を返すことを確認
+        // Confirm getCurrentInputSource() returns a string
         let source = imeController.getCurrentInputSource()
         XCTAssertFalse(source.isEmpty)
     }
