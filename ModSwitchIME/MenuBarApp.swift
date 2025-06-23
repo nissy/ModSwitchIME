@@ -371,7 +371,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     @objc private func toggleLaunchAtLogin() {
         preferences.launchAtLogin.toggle()
         
-        // Use SMAppService API (available in macOS 13.0+, we're targeting macOS 15.0)
+        // Use SMAppService API (available in macOS 13.0+)
         do {
             if preferences.launchAtLogin {
                 try SMAppService.mainApp.register()

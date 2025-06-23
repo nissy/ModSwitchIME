@@ -140,7 +140,7 @@ ModSwitchIME is designed with privacy and security as core principles:
 
 ### System Requirements
 
-- macOS 15.0 or later
+- macOS 13.0 (Ventura) or later
 - Accessibility permission required
 
 ### Installation Steps
