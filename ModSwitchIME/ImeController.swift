@@ -142,9 +142,21 @@ class ImeController: ErrorHandler {
         if Thread.isMainThread {
             return getCurrentInputSourceSync()
         } else {
-            return DispatchQueue.main.sync {
-                return getCurrentInputSourceSync()
+            // Use a semaphore to safely get the result without deadlock
+            var result = "Unknown"
+            let semaphore = DispatchSemaphore(value: 0)
+            
+            DispatchQueue.main.async {
+                result = self.getCurrentInputSourceSync()
+                semaphore.signal()
             }
+            
+            // Wait with timeout to prevent infinite wait
+            if semaphore.wait(timeout: .now() + 1.0) == .timedOut {
+                Logger.warning("Timeout getting current input source", category: .ime)
+            }
+            
+            return result
         }
     }
     

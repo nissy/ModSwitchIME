@@ -240,9 +240,21 @@ class Preferences: ObservableObject {
         if Thread.isMainThread {
             return getAvailableInputSourcesSync()
         } else {
-            return DispatchQueue.main.sync {
-                return getAvailableInputSourcesSync()
+            // Use a semaphore to safely get the result without deadlock
+            var result: [(id: String, name: String)] = []
+            let semaphore = DispatchSemaphore(value: 0)
+            
+            DispatchQueue.main.async {
+                result = getAvailableInputSourcesSync()
+                semaphore.signal()
             }
+            
+            // Wait with timeout to prevent infinite wait
+            if semaphore.wait(timeout: .now() + 2.0) == .timedOut {
+                Logger.warning("Timeout getting available input sources", category: .preferences)
+            }
+            
+            return result
         }
     }
     
@@ -309,9 +321,21 @@ class Preferences: ObservableObject {
         if Thread.isMainThread {
             return getAllInputSourcesSync(includeDisabled: includeDisabled)
         } else {
-            return DispatchQueue.main.sync {
-                return getAllInputSourcesSync(includeDisabled: includeDisabled)
+            // Use a semaphore to safely get the result without deadlock
+            var result: [InputSource] = []
+            let semaphore = DispatchSemaphore(value: 0)
+            
+            DispatchQueue.main.async {
+                result = getAllInputSourcesSync(includeDisabled: includeDisabled)
+                semaphore.signal()
             }
+            
+            // Wait with timeout to prevent infinite wait
+            if semaphore.wait(timeout: .now() + 2.0) == .timedOut {
+                Logger.warning("Timeout getting all input sources", category: .preferences)
+            }
+            
+            return result
         }
     }
     

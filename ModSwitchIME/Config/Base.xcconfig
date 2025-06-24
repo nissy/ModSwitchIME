@@ -11,3 +11,8 @@ INFOPLIST_KEY_CFBundleVersion = $(CURRENT_PROJECT_VERSION)
 // Alternative Info.plist keys (for compatibility)
 CFBundleShortVersionString = $(MARKETING_VERSION)
 CFBundleVersion = $(CURRENT_PROJECT_VERSION)
+
+// Architecture settings for Universal Binary
+ARCHS = $(ARCHS_STANDARD)
+VALID_ARCHS = x86_64 arm64
+ONLY_ACTIVE_ARCH = NO

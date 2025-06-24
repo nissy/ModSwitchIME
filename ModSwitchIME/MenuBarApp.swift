@@ -23,12 +23,9 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     override init() {
         super.init()
         // Ensure UI operations happen on main thread
-        if Thread.isMainThread {
-            initializeComponents()
-        } else {
-            DispatchQueue.main.sync {
-                initializeComponents()
-            }
+        // Use async to avoid potential deadlock
+        DispatchQueue.main.async { [weak self] in
+            self?.initializeComponents()
         }
     }
     

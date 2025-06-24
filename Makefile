@@ -136,6 +136,8 @@ build: ## Build production version
 		CODE_SIGN_IDENTITY="Developer ID Application: Yoshihiko Nishida (R7LKF73J2W)" \
 		OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" \
 		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+		ARCHS="x86_64 arm64" \
+		ONLY_ACTIVE_ARCH=NO \
 		build
 	@echo "$(GREEN)Copying to prod directory...$(NC)"
 	@BUILD_PATH=$$(xcodebuild -project $(XCODE_PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION_RELEASE) -derivedDataPath $(PROD_BUILD_DIR)/DerivedData -showBuildSettings DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) | grep -E '^\s*BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
@@ -427,10 +429,10 @@ show-version: ## Show version from xcconfig files
 	@echo "Marketing Version: $$(grep '^MARKETING_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
 	@echo "Build Number: $$(grep '^CURRENT_PROJECT_VERSION' ModSwitchIME/Config/Version.xcconfig | cut -d'=' -f2 | xargs)"
 
-bump-version: ## Update version (usage: make bump-version VERSION=1.0.2)
+bump-version: ## Update version (usage: make bump-version VERSION=1.0.3)
 	@if [ -z "$(VERSION)" ]; then \
 		echo "$(RED)Error: VERSION not specified$(NC)"; \
-		echo "Usage: make bump-version VERSION=1.0.2"; \
+		echo "Usage: make bump-version VERSION=1.0.3"; \
 		exit 1; \
 	fi
 	@./Scripts/update_version.sh $(VERSION)
