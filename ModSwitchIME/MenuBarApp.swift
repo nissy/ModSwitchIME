@@ -722,8 +722,10 @@ struct AboutView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Link("GitHub Repository", destination: URL(string: "https://github.com/nissy/ModSwitchIME")!)
-                    .font(.caption)
+                if let url = URL(string: "https://github.com/nissy/ModSwitchIME") {
+                    Link("GitHub Repository", destination: url)
+                        .font(.caption)
+                }
             }
             
             Spacer()
