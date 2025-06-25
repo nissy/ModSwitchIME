@@ -1,6 +1,6 @@
 # ModSwitchIME
 
-<img src="https://github.com/user-attachments/assets/f603fcce-77fa-474b-8f8e-c9fc7a426005" alt="Logo" width="128">
+<img src="https://github.com/user-attachments/assets/f603fcce-77fa-474b-8f8e-c9fc7a426005" width="128">
 
 Instantly switch IMEs with 8 modifier keys - A macOS app for multilingual users
 
@@ -18,7 +18,7 @@ ModSwitchIME is a macOS menu bar application that allows you to instantly switch
 
 ### 1. IME Switching with Modifier Keys
 
-<img width="612" src="https://github.com/user-attachments/assets/c1030736-a336-4a74-b3d5-37d317e5cc11" />
+<img width="612" src="https://github.com/user-attachments/assets/7b95ff17-bb5b-4242-8c4c-04f57dabfcbe" />
 
 #### Freely assign any IME to all 8 modifier keys
 
