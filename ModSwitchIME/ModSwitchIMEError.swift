@@ -9,6 +9,8 @@ enum ModSwitchIMEError: LocalizedError {
     case systemError(Error)
     case eventTapCreationFailed(reason: String)
     case eventTapDisabled(automatic: Bool)
+    case invalidInputSource(String)
+    case inputMethodSwitchFailed(String)
     
     var errorDescription: String? {
         switch self {
@@ -29,6 +31,10 @@ enum ModSwitchIMEError: LocalizedError {
         case .eventTapDisabled(let automatic):
             return automatic ? "Event tap was automatically disabled by the system." 
                 : "Event tap was disabled due to user input timeout."
+        case .invalidInputSource(let message):
+            return message
+        case .inputMethodSwitchFailed(let message):
+            return message
         }
     }
     
@@ -51,6 +57,10 @@ enum ModSwitchIMEError: LocalizedError {
         case .eventTapDisabled(let automatic):
             return automatic ? "The application will attempt to re-enable monitoring automatically." 
                 : "Try clicking slower or check your system's security settings."
+        case .invalidInputSource:
+            return "Please ensure the input source ID is correctly formatted."
+        case .inputMethodSwitchFailed:
+            return "Try switching manually or restart the application."
         }
     }
 }

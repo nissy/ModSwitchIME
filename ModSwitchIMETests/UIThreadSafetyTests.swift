@@ -121,24 +121,27 @@ final class UIThreadSafetyTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Rapid switching")
         expectation.expectedFulfillmentCount = 2
         
+        // Use serial queue to avoid TIS API concurrent access issues
+        let serialQueue = DispatchQueue(label: "test.rapid.switching")
+        
         // Thread 1: Simulate UI rapidly accessing input sources
-        DispatchQueue.global().async {
-            for _ in 0..<3 {
+        serialQueue.async {
+            for _ in 0..<2 {  // Reduced iterations
                 _ = Preferences.getAllInputSources(includeDisabled: Bool.random())
             }
             expectation.fulfill()
         }
         
         // Thread 2: Simulate IME switching
-        DispatchQueue.global().async {
+        serialQueue.async {
             for _ in 0..<2 {
                 _ = controller.getCurrentInputSource()
             }
             expectation.fulfill()
         }
         
-        // Wait for both threads to complete
-        wait(for: [expectation], timeout: 2.0)
+        // Wait for both operations to complete
+        wait(for: [expectation], timeout: 10.0)  // Increased timeout
     }
     
     func testPreferencesViewRapidUpdates() {

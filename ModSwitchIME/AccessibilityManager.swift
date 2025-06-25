@@ -16,23 +16,35 @@ class AccessibilityManager {
     
     // Check accessibility permission with caching (thread-safe)
     var hasPermission: Bool {
-        return cacheQueue.sync {
+        // First, try to read cached value without blocking
+        var cachedValue: (status: Bool, time: Date)?
+        cacheQueue.sync {
+            if let status = cachedPermissionStatus {
+                cachedValue = (status, lastCheckTime)
+            }
+        }
+        
+        // Check if cached value is still valid
+        if let cached = cachedValue {
             let now = Date()
-            
-            // Return cached value if still valid
+            if now.timeIntervalSince(cached.time) < cacheValidityDuration {
+                return cached.status
+            }
+        }
+        
+        // Need to refresh - use barrier to ensure exclusive access
+        return cacheQueue.sync(flags: .barrier) {
+            // Double-check in case another thread just updated
+            let now = Date()
             if let cached = cachedPermissionStatus,
                now.timeIntervalSince(lastCheckTime) < cacheValidityDuration {
                 return cached
             }
             
-            // Check permission and cache result (must be done synchronously)
+            // Check permission and update cache synchronously
             let status = AXIsProcessTrusted()
-            
-            // Update cache atomically
-            cacheQueue.async(flags: .barrier) {
-                self.cachedPermissionStatus = status
-                self.lastCheckTime = now
-            }
+            cachedPermissionStatus = status
+            lastCheckTime = now
             
             Logger.debug("Accessibility permission checked: \(status)", category: .keyboard)
             return status

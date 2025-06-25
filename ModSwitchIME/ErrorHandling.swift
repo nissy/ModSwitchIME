@@ -2,11 +2,17 @@ import Foundation
 
 // Protocol for consistent error handling
 protocol ErrorHandler {
+    var onError: ((ModSwitchIMEError) -> Void)? { get set }
     func handleError(_ error: ModSwitchIMEError)
 }
 
 // Extension providing default implementation
 extension ErrorHandler {
+    func handleError(_ error: ModSwitchIMEError) {
+        logError(error)
+        onError?(error)
+    }
+    
     func logError(_ error: ModSwitchIMEError, category: Logger.Category = .main) {
         switch error {
         case .accessibilityPermissionDenied:
@@ -25,6 +31,10 @@ extension ErrorHandler {
             Logger.error("Event tap creation failed: \(reason)", category: category)
         case .eventTapDisabled(let automatic):
             Logger.error("Event tap disabled (automatic: \(automatic))", category: category)
+        case .invalidInputSource(let message):
+            Logger.error("Invalid input source: \(message)", category: category)
+        case .inputMethodSwitchFailed(let message):
+            Logger.error("Input method switch failed: \(message)", category: category)
         }
     }
     
@@ -45,6 +55,30 @@ extension ErrorHandler {
             return true
         default:
             return false
+        }
+    }
+}
+
+/// Unified error handling utility
+enum ErrorHandlingUtils {
+    /// Execute a throwing function and handle errors uniformly
+    static func executeWithErrorHandling<T>(
+        operation: () throws -> T,
+        errorHandler: ErrorHandler? = nil,
+        defaultValue: T,
+        category: Logger.Category = .main
+    ) -> T {
+        do {
+            return try operation()
+        } catch let error as ModSwitchIMEError {
+            Logger.error(error.localizedDescription, category: category)
+            errorHandler?.handleError(error)
+            return defaultValue
+        } catch {
+            let wrappedError = ModSwitchIMEError.systemError(error)
+            Logger.error(wrappedError.localizedDescription, category: category)
+            errorHandler?.handleError(wrappedError)
+            return defaultValue
         }
     }
 }
