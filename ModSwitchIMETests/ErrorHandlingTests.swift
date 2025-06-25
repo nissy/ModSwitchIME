@@ -318,9 +318,9 @@ class ErrorHandlingTests: XCTestCase {
     
     // MARK: - Concurrency Error Handling Tests
     
-    func disabled_testConcurrentErrorConditions() {
-        // TODO: This test causes app crashes in test environment
-        // Temporarily disabled until we can fix the concurrent access issues
+    func testConcurrentErrorConditions() {
+        // Test concurrent error conditions
+        // Should now work with improved thread safety
         // Given: Concurrent access that might cause errors
         let concurrentQueue = DispatchQueue(label: "test.error.concurrent", attributes: .concurrent)
         let expectation = XCTestExpectation(description: "Concurrent error handling")

@@ -236,26 +236,10 @@ class Preferences: ObservableObject {
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
-        // Ensure TIS API calls are on main thread
-        if Thread.isMainThread {
-            return getAvailableInputSourcesSync()
-        } else {
-            // Use a semaphore to safely get the result without deadlock
-            var result: [(id: String, name: String)] = []
-            let semaphore = DispatchSemaphore(value: 0)
-            
-            DispatchQueue.main.async {
-                result = getAvailableInputSourcesSync()
-                semaphore.signal()
-            }
-            
-            // Wait with timeout to prevent infinite wait
-            if semaphore.wait(timeout: .now() + 2.0) == .timedOut {
-                Logger.warning("Timeout getting available input sources", category: .preferences)
-            }
-            
-            return result
-        }
+        return ThreadSafetyUtils.executeOnMainThreadWithDefault(
+            defaultValue: [],
+            execute: { getAvailableInputSourcesSync() }
+        )
     }
     
     private static func getAvailableInputSourcesSync() -> [(id: String, name: String)] {
@@ -317,26 +301,10 @@ class Preferences: ObservableObject {
     // MARK: - Input Source Selection UI Support
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
-        // Ensure TIS API calls are on main thread
-        if Thread.isMainThread {
-            return getAllInputSourcesSync(includeDisabled: includeDisabled)
-        } else {
-            // Use a semaphore to safely get the result without deadlock
-            var result: [InputSource] = []
-            let semaphore = DispatchSemaphore(value: 0)
-            
-            DispatchQueue.main.async {
-                result = getAllInputSourcesSync(includeDisabled: includeDisabled)
-                semaphore.signal()
-            }
-            
-            // Wait with timeout to prevent infinite wait
-            if semaphore.wait(timeout: .now() + 2.0) == .timedOut {
-                Logger.warning("Timeout getting all input sources", category: .preferences)
-            }
-            
-            return result
-        }
+        return ThreadSafetyUtils.executeOnMainThreadWithDefault(
+            defaultValue: [],
+            execute: { getAllInputSourcesSync(includeDisabled: includeDisabled) }
+        )
     }
     
     private static func getAllInputSourcesSync(includeDisabled: Bool = false) -> [InputSource] {

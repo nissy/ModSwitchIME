@@ -15,6 +15,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var preferencesWindowController: NSWindowController?
     private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
+    private var windowCloseObservers: [NSObjectProtocol] = []
     
     // Prevent duplicate permission requests
     private var isShowingPermissionAlert = false
@@ -30,11 +31,6 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     }
     
     private func initializeComponents() {
-        // Log the file path on startup for debugging purposes
-        if let logPath = Logger.getLogFilePath() {
-            Logger.info("Debug log file: \(logPath)", category: .main)
-        }
-        
         checkAccessibilityPermissions()
         setupMenuBar()
         setupKeyMonitor()
@@ -321,13 +317,14 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         aboutWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        NotificationCenter.default.addObserver(
+        let observer = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: aboutWindowController?.window,
             queue: .main
         ) { _ in
             NSApp.setActivationPolicy(.accessory)
         }
+        windowCloseObservers.append(observer)
     }
     
     @objc private func showPreferences() {
@@ -357,13 +354,14 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        NotificationCenter.default.addObserver(
+        let observer = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: preferencesWindowController?.window,
             queue: .main
         ) { _ in
             NSApp.setActivationPolicy(.accessory)
         }
+        windowCloseObservers.append(observer)
     }
     
     @objc private func toggleLaunchAtLogin() {
@@ -510,21 +508,43 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     
     @objc private func systemWillSleep(_ notification: Notification) {
         // System is going to sleep
-        Logger.debug("System will sleep")
+        Logger.info("System will sleep - stopping KeyMonitor", category: .main)
+        keyMonitor?.stop()
     }
     
     @objc private func systemDidWake(_ notification: Notification) {
         // System woke up
-        Logger.debug("System did wake")
+        Logger.info("System did wake - restarting KeyMonitor", category: .main)
+        
+        // Delay restart to ensure system is fully awake
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            
+            // Only restart if we have accessibility permission
+            if AccessibilityManager.shared.hasPermission {
+                self.keyMonitor?.start()
+                Logger.info("KeyMonitor restarted after wake", category: .main)
+            } else {
+                Logger.warning("Cannot restart KeyMonitor - no accessibility permission", category: .main)
+            }
+        }
     }
     
     @objc private func screenDidLock(_ notification: Notification) {
         // Screen locked
-        Logger.debug("Screen did lock")
+        Logger.info("Screen did lock - pausing KeyMonitor", category: .main)
+        // Don't stop KeyMonitor on screen lock, just log the event
+        // Some users may want to use modifier keys to unlock
     }
     
     @objc private func screenDidUnlock(_ notification: Notification) {
-        // Screen unlocked - no action needed
+        // Screen unlocked
+        Logger.info("Screen did unlock", category: .main)
+        // Ensure KeyMonitor is active if it should be
+        if let monitor = keyMonitor, !monitor.isMonitoring, AccessibilityManager.shared.hasPermission {
+            monitor.start()
+            Logger.info("KeyMonitor restarted after screen unlock", category: .main)
+        }
     }
     
     @objc private func restartApp() {
@@ -626,6 +646,10 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     
     deinit {
         keyMonitor?.stop()
+        // Remove all notification observers to prevent memory leaks
+        windowCloseObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        windowCloseObservers.removeAll()
+        NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         DistributedNotificationCenter.default().removeObserver(self)
     }
