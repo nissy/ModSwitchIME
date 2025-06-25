@@ -1,5 +1,5 @@
 // Version configuration for ModSwitchIME
 // This file is used by update_version.sh to manage version numbers
 
-MARKETING_VERSION = 1.0.4
+MARKETING_VERSION = 1.0.5
 CURRENT_PROJECT_VERSION = 105
