@@ -94,6 +94,7 @@ build-dev: ## Build and run development version (keeps permissions)
 		-configuration $(CONFIGURATION_DEBUG) \
 		-destination $(DESTINATION) \
 		-derivedDataPath $(DEV_BUILD_DIR)/DerivedData \
+		-xcconfig ModSwitchIME/Config/Version.xcconfig \
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
 		CODE_SIGN_STYLE=Manual \
@@ -129,6 +130,7 @@ build: ## Build production version
 		-configuration $(CONFIGURATION_RELEASE) \
 		-destination $(DESTINATION) \
 		-derivedDataPath $(PROD_BUILD_DIR)/DerivedData \
+		-xcconfig ModSwitchIME/Config/Version.xcconfig \
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
 		TEST_BUNDLE_IDENTIFIER="$(TEST_BUNDLE_IDENTIFIER)" \
@@ -220,6 +222,7 @@ archive: ## Create xcarchive with Developer ID signing
 		-archivePath $(ARCHIVE_PATH) \
 		-destination $(DESTINATION) \
 		-allowProvisioningUpdates \
+		-xcconfig ModSwitchIME/Config/Version.xcconfig \
 		DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
 		PRODUCT_BUNDLE_IDENTIFIER="$(PRODUCT_BUNDLE_IDENTIFIER)" \
 		TEST_BUNDLE_IDENTIFIER="$(TEST_BUNDLE_IDENTIFIER)" \

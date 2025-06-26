@@ -94,14 +94,14 @@ enum ModifierKey: String, CaseIterable, Codable {
     
     var displayName: String {
         switch self {
-        case .leftControl: return "Left Control"
-        case .leftShift: return "Left Shift"
-        case .leftOption: return "Left Option"
-        case .leftCommand: return "Left Command"
-        case .rightControl: return "Right Control"
-        case .rightShift: return "Right Shift"
-        case .rightOption: return "Right Option"
-        case .rightCommand: return "Right Command"
+        case .leftControl: return "⌃ Left Control"
+        case .leftShift: return "⇧ Left Shift"
+        case .leftOption: return "⌥ Left Option"
+        case .leftCommand: return "⌘ Left Command"
+        case .rightControl: return "⌃ Right Control"
+        case .rightShift: return "⇧ Right Shift"
+        case .rightOption: return "⌥ Right Option"
+        case .rightCommand: return "⌘ Right Command"
         }
     }
     
@@ -237,9 +237,8 @@ class Preferences: ObservableObject {
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
         return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: [],
-            execute: { getAvailableInputSourcesSync() }
-        )
+            defaultValue: []
+        ) { getAvailableInputSourcesSync() }
     }
     
     private static func getAvailableInputSourcesSync() -> [(id: String, name: String)] {
@@ -302,9 +301,8 @@ class Preferences: ObservableObject {
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
         return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: [],
-            execute: { getAllInputSourcesSync(includeDisabled: includeDisabled) }
-        )
+            defaultValue: []
+        ) { getAllInputSourcesSync(includeDisabled: includeDisabled) }
     }
     
     private static func getAllInputSourcesSync(includeDisabled: Bool = false) -> [InputSource] {
