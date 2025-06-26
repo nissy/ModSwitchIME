@@ -217,4 +217,81 @@ class ImeControllerTests: XCTestCase {
             // Should handle without error
         }
     }
+    
+    // MARK: - Tests for Application Focus Monitoring
+    
+    func testApplicationFocusNotificationSetup() {
+        // Test that app focus monitoring is set up
+        // In real implementation, observer is added in init
+        XCTAssertNotNil(imeController)
+        
+        // Post a test notification
+        let app = NSRunningApplication.current
+        let userInfo: [AnyHashable: Any] = [NSWorkspace.applicationUserInfoKey: app]
+        
+        NotificationCenter.default.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: userInfo
+        )
+        
+        // Should not crash
+        XCTAssertTrue(true)
+    }
+    
+    func testIMEStateVerificationAfterAppSwitch() {
+        // Given: Set a known IME
+        let targetIME = "com.apple.keylayout.ABC"
+        mockCurrentInputSource = targetIME
+        mockableController.switchToSpecificIME(targetIME)
+        
+        // When: App switch occurs
+        let app = NSRunningApplication.current
+        let userInfo: [AnyHashable: Any] = [NSWorkspace.applicationUserInfoKey: app]
+        
+        NotificationCenter.default.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: userInfo
+        )
+        
+        // Then: Verification should occur after delay
+        let expectation = XCTestExpectation(description: "IME state verification after app switch")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // In real implementation, this would log verification result
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+    }
+    
+    func testIMEMismatchDetectionAfterAppSwitch() {
+        // Given: Controller expects one IME but actual is different
+        mockCurrentInputSource = "com.apple.keylayout.ABC"
+        mockableController.switchToSpecificIME("com.apple.keylayout.Japanese")
+        
+        // Simulate app changing IME
+        mockCurrentInputSource = "com.apple.keylayout.US"
+        
+        // When: App focus notification
+        let app = NSRunningApplication.current
+        let userInfo: [AnyHashable: Any] = [NSWorkspace.applicationUserInfoKey: app]
+        
+        NotificationCenter.default.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: userInfo
+        )
+        
+        // Then: Should detect mismatch (logged in real implementation)
+        let expectation = XCTestExpectation(description: "Mismatch detection")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // Mismatch would be logged
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+    }
 }

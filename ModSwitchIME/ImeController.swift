@@ -11,11 +11,17 @@ class ImeController: ErrorHandler {
     private var inputSourceCache: [String: TISInputSource] = [:]
     private let cacheQueue = DispatchQueue(label: "com.modswitchime.cache", attributes: .concurrent)
     
+    // Track last switched IME for app focus verification
+    private var lastSwitchedIME: String?
+    private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME", attributes: .concurrent)
+    
     init() {
         // Initialize cache on startup for immediate availability
         initializeCache()
         // Start monitoring for IME changes
         startMonitoringIMEChanges()
+        // Start monitoring for app focus changes
+        startMonitoringApplicationFocus()
     }
     
     private func initializeCache() {
@@ -158,6 +164,8 @@ class ImeController: ErrorHandler {
                 if result == noErr {
                     // Success - verify the switch after a short delay
                     verifyIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
+                    // Track successful switch
+                    setLastSwitchedIME(inputSourceID)
                     return
                 }
                 
@@ -192,6 +200,8 @@ class ImeController: ErrorHandler {
                 let result = TISSelectInputSource(source)
                 if result == noErr {
                     verifyIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
+                    // Track successful switch
+                    setLastSwitchedIME(inputSourceID)
                     return
                 }
                 
@@ -226,18 +236,15 @@ class ImeController: ErrorHandler {
     
     private func retryIMESwitch(targetIME: String) {
         DispatchQueue.main.async { [weak self] in
-            do {
-                // Find fresh source directly
-                if let freshSource = self?.findFreshInputSource(targetIME) {
-                    let result = TISSelectInputSource(freshSource)
-                    if result == noErr {
-                        Logger.info("Retry IME switch successful", category: .ime)
-                    } else {
-                        Logger.error("Retry IME switch failed with code: \(result)", category: .ime)
-                    }
+            // Find fresh source directly
+            if let freshSource = self?.findFreshInputSource(targetIME) {
+                let result = TISSelectInputSource(freshSource)
+                if result == noErr {
+                    Logger.info("Retry IME switch successful", category: .ime)
+                    self?.setLastSwitchedIME(targetIME)
+                } else {
+                    Logger.error("Retry IME switch failed with code: \(result)", category: .ime)
                 }
-            } catch {
-                Logger.error("Retry IME switch error: \(error)", category: .ime)
             }
         }
     }
@@ -333,15 +340,67 @@ class ImeController: ErrorHandler {
         }
     }
     
+    // MARK: - Application Focus Monitoring
+    
+    private func startMonitoringApplicationFocus() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(applicationDidActivate),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func applicationDidActivate(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+        
+        let appName = app.localizedName ?? "Unknown"
+        Logger.debug("Application activated: \(appName)", category: .ime)
+        
+        // Verify IME state after a short delay to ensure app is fully focused
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.verifyIMEStateAfterAppSwitch()
+        }
+    }
+    
+    private func verifyIMEStateAfterAppSwitch() {
+        let actualIME = getCurrentInputSource()
+        
+        // Get expected IME from last switch
+        let expectedIME = lastSwitchedIMEQueue.sync { lastSwitchedIME }
+        
+        if let expected = expectedIME, actualIME != expected {
+            Logger.warning("IME state mismatch after app switch: expected=\(expected), actual=\(actualIME)", category: .ime)
+            
+            // Optionally refresh cache to ensure accuracy
+            refreshInputSourceCache()
+            
+            // Log for debugging but don't force switch
+            // Some apps intentionally change IME and we should respect that
+        } else {
+            Logger.debug("IME state verified after app switch: \(actualIME)", category: .ime)
+        }
+    }
+    
+    private func setLastSwitchedIME(_ imeId: String) {
+        lastSwitchedIMEQueue.async(flags: .barrier) { [weak self] in
+            self?.lastSwitchedIME = imeId
+        }
+    }
+    
+    private func getLastSwitchedIME() -> String? {
+        return lastSwitchedIMEQueue.sync { lastSwitchedIME }
+    }
+    
     // Removed performSwitch and related methods - no longer needed after simplification
     
     func getCurrentInputSource() -> String {
         return ThreadSafetyUtils.executeOnMainThreadWithDefault(
             timeout: 1.0,
             defaultValue: "Unknown"
-        )            { [weak self] in
+        ) { [weak self] in
                 self?.getCurrentInputSourceSync() ?? "Unknown"
-            }
+        }
     }
     
     private func getCurrentInputSourceSync() -> String {
