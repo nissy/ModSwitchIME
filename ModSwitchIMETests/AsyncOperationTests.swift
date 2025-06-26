@@ -46,7 +46,8 @@ class AsyncOperationTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Multiple toggles")
         expectation.expectedFulfillmentCount = 5
         
-        // When: Performing multiple toggles
+        // When: Performing multiple toggles with sufficient spacing
+        // Note: With coalescing, requests need to be spaced > 50ms apart
         for i in 0..<5 {
             DispatchQueue.global().asyncAfter(deadline: .now() + Double(i) * 0.1) {
                 if i % 2 == 0 {
@@ -54,7 +55,11 @@ class AsyncOperationTests: XCTestCase {
                 } else {
                     self.imeController.switchToSpecificIME("com.apple.keylayout.ABC")
                 }
-                expectation.fulfill()
+                
+                // Fulfill after allowing time for coalescing
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    expectation.fulfill()
+                }
             }
         }
         

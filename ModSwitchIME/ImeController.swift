@@ -15,6 +15,12 @@ class ImeController: ErrorHandler {
     private var lastSwitchedIME: String?
     private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME", attributes: .concurrent)
     
+    // Throttling for IME switch requests
+    private var lastSwitchTime: CFAbsoluteTime = 0
+    private var lastSwitchIME: String?
+    private let throttleInterval: TimeInterval = 0.05 // 50ms
+    private let throttleQueue = DispatchQueue(label: "com.modswitchime.throttle")
+    
     init() {
         // Initialize cache on startup for immediate availability
         initializeCache()
@@ -104,13 +110,41 @@ class ImeController: ErrorHandler {
             return
         }
         
-        // Direct switch without checking current IME for better performance
-        // TIS API handles switching to the same IME efficiently
-        do {
-            try selectInputSource(imeId)
-        } catch {
-            let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
-            handleError(imeError)
+        let now = CFAbsoluteTimeGetCurrent()
+        
+        // Thread-safe throttling check
+        var shouldSwitch = false
+        throttleQueue.sync {
+            // Check if enough time has passed since last switch
+            let timeSinceLastSwitch = now - lastSwitchTime
+            
+            // Skip if:
+            // 1. Same IME requested within throttle interval
+            // 2. Any switch happened within throttle interval (except first switch)
+            if lastSwitchIME == imeId && timeSinceLastSwitch < throttleInterval {
+                Logger.debug("Throttling duplicate IME switch request for: \(imeId)", category: .ime)
+                return
+            }
+            
+            if lastSwitchTime > 0 && timeSinceLastSwitch < throttleInterval {
+                Logger.debug("Throttling IME switch request (too soon): \(imeId)", category: .ime)
+                return
+            }
+            
+            // Update throttle state
+            lastSwitchTime = now
+            lastSwitchIME = imeId
+            shouldSwitch = true
+        }
+        
+        // Execute immediately if throttle check passed
+        if shouldSwitch {
+            do {
+                try selectInputSource(imeId)
+            } catch {
+                let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
+                handleError(imeError)
+            }
         }
     }
     

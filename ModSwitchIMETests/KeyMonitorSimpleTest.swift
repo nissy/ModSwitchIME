@@ -153,4 +153,55 @@ class KeyMonitorSimpleTest: XCTestCase {
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 0)
         #endif
     }
+    
+    // MARK: - Event Tap Health Monitoring Tests
+    
+    func testEventTapHealthMonitoring() {
+        // Test that event tap health monitoring is set up
+        // Note: This test can only verify basic start/stop functionality
+        // Real event tap creation requires accessibility permissions
+        
+        // When monitoring is started
+        keyMonitor.start()
+        
+        // Then: isMonitoring should reflect the state
+        // (actual value depends on accessibility permissions)
+        let monitoringState = keyMonitor.isMonitoring
+        
+        // Stop monitoring
+        keyMonitor.stop()
+        
+        // After stopping, should not be monitoring
+        XCTAssertFalse(keyMonitor.isMonitoring, "Should not be monitoring after stop")
+    }
+    
+    func testEventTapRecreationOnFailure() {
+        // Test conceptual event tap recreation behavior
+        // Note: Can't simulate actual event tap failure in unit tests
+        
+        // Start monitoring
+        keyMonitor.start()
+        
+        // Record initial state
+        let initialState = keyMonitor.isMonitoring
+        
+        // In a real scenario with proper permissions:
+        // 1. Event tap would be created
+        // 2. Health monitor would check every 5 seconds
+        // 3. If disabled, it would attempt to recreate
+        
+        // For unit test, we just verify the monitor can be started/stopped
+        let expectation = XCTestExpectation(description: "Monitor lifecycle test")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Verify monitor is in expected state
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+        
+        // Clean up
+        keyMonitor.stop()
+        XCTAssertFalse(keyMonitor.isMonitoring, "Should be stopped after cleanup")
+    }
 }

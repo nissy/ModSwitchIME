@@ -39,6 +39,12 @@ class KeyMonitor {
     private var idleTimer: Timer?
     private var lastActivityTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     
+    // Event tap health monitoring
+    private var eventTapHealthTimer: Timer?
+    private var lastEventTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
+    private let eventTapHealthCheckInterval: TimeInterval = 5.0
+    private let eventTapInactivityThreshold: TimeInterval = 30.0
+    
     // Debug
     var isIdleTimerRunning: Bool {
         return idleTimer != nil
@@ -105,6 +111,9 @@ class KeyMonitor {
         // Start idle timer
         startIdleTimer()
         
+        // Start event tap health monitoring
+        startEventTapHealthMonitoring()
+        
         // Observe preference changes
         observePreferenceChanges()
     }
@@ -124,6 +133,9 @@ class KeyMonitor {
         // Stop idle timer
         stopIdleTimer()
         
+        // Stop event tap health monitoring
+        stopEventTapHealthMonitoring()
+        
         // Cancel retry timer
         cancelRetryTimer()
         
@@ -141,6 +153,7 @@ class KeyMonitor {
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Record activity
         lastActivityTime = CFAbsoluteTimeGetCurrent()
+        lastEventTime = CFAbsoluteTimeGetCurrent()
         
         switch type {
         case .flagsChanged:
@@ -438,6 +451,62 @@ class KeyMonitor {
             }
         } else {
             stopIdleTimer()
+        }
+    }
+    
+    // MARK: - Event Tap Health Monitoring
+    
+    private func startEventTapHealthMonitoring() {
+        eventTapHealthTimer = Timer.scheduledTimer(withTimeInterval: eventTapHealthCheckInterval, repeats: true) { [weak self] _ in
+            self?.checkEventTapHealth()
+        }
+    }
+    
+    private func stopEventTapHealthMonitoring() {
+        eventTapHealthTimer?.invalidate()
+        eventTapHealthTimer = nil
+    }
+    
+    private func checkEventTapHealth() {
+        let timeSinceLastEvent = CFAbsoluteTimeGetCurrent() - lastEventTime
+        
+        // If no events for threshold time and we're supposed to be monitoring
+        if timeSinceLastEvent > eventTapInactivityThreshold && isRunning {
+            Logger.warning("No events received for \(Int(timeSinceLastEvent))s, checking event tap health", category: .keyboard)
+            
+            // Test if event tap is still active
+            if let eventTap = eventTap {
+                if !CGEvent.tapIsEnabled(tap: eventTap) {
+                    Logger.error("Event tap is disabled, attempting to re-enable", category: .keyboard)
+                    CGEvent.tapEnable(tap: eventTap, enable: true)
+                    
+                    // If still not enabled after attempt, recreate
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        guard let self = self, let tap = self.eventTap else { return }
+                        if !CGEvent.tapIsEnabled(tap: tap) {
+                            Logger.error("Event tap re-enable failed, recreating event tap", category: .keyboard)
+                            self.recreateEventTap()
+                        } else {
+                            Logger.info("Event tap successfully re-enabled", category: .keyboard)
+                        }
+                    }
+                }
+            } else {
+                Logger.error("Event tap is nil, recreating", category: .keyboard)
+                recreateEventTap()
+            }
+        }
+    }
+    
+    private func recreateEventTap() {
+        Logger.info("Recreating event tap", category: .keyboard)
+        stop()
+        
+        // Reset retry count to allow recreation attempts
+        retryCount = 0
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.start()
         }
     }
     
