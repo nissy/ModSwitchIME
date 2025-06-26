@@ -18,15 +18,15 @@ export INSTALLER_IDENTITY="Developer ID Installer"
 export PROJECT_NAME="ModSwitchIME"
 export COPYRIGHT_HOLDER="Your Name"
 export COPYRIGHT_YEAR="2025"
-export AUTHOR_NAME="ModSwtchIME Team"
+export AUTHOR_NAME="ModSwitchIME Team"
 export GITHUB_URL="https://github.com/YourUsername/ModSwitchIME"
 
 # Build Configuration
-export XCODE_VERSION="15.4"
-export MACOS_DEPLOYMENT_TARGET="15.0"
+export XCODE_VERSION="16.0"
+export MACOS_DEPLOYMENT_TARGET="13.0"
 
-# Version (usually from git tags)
-export VERSION="1.0.0"
+# Version (managed by Version.xcconfig, but can be overridden here)
+export VERSION="1.0.8"
 export BUILD_NUMBER="1"
 
 # Optional: Set specific Xcode version
