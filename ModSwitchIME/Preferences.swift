@@ -237,9 +237,8 @@ class Preferences: ObservableObject {
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
         return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: [],
-            execute: { getAvailableInputSourcesSync() }
-        )
+            defaultValue: []
+        )            { getAvailableInputSourcesSync() }
     }
     
     private static func getAvailableInputSourcesSync() -> [(id: String, name: String)] {
@@ -302,9 +301,8 @@ class Preferences: ObservableObject {
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
         return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: [],
-            execute: { getAllInputSourcesSync(includeDisabled: includeDisabled) }
-        )
+            defaultValue: []
+        )            { getAllInputSourcesSync(includeDisabled: includeDisabled) }
     }
     
     private static func getAllInputSourcesSync(includeDisabled: Bool = false) -> [InputSource] {
