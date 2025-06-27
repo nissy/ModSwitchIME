@@ -159,11 +159,11 @@ ModSwitchIMEは直接IME切り替えのために**TISInputSource API**を使用�
 
 | アプリ | 実装方式 | 長所 | 制限事項 |
 |-----|---------|------|----------|
-| **ModSwitchIME** | TISInputSource API | 直接IME制御、全言語対応 | アクセシビリティ権限が必要 |
-| **英かな (eisukana)** | キーリマッピング | シンプル、軽量 | 英語⇔日本語のみ |
-| **Karabiner-Elements** | キーイベント傍受 | 高度にカスタマイズ可能 | CJK言語切り替えに問題あり |
-| **BetterTouchTool** | システムショートカット | 幅広いジェスチャー対応 | 間接的な切り替え方式 |
-| **Hammerspoon** | Lua自動化 | 無限のカスタマイズ | プログラミング知識が必要 |
+| **ModSwitchIME** | TISInputSource API（リトライ付き） | 直接IME制御、信頼性の高いCJK対応 | アクセシビリティ権限が必要 |
+| **英かな (eisukana)** | CGEvent API + TIS | シンプル、軽量 | 主に英語⇔日本語 |
+| **Karabiner-Elements** | IOKit HID傍受 | 高度にカスタマイズ可能、低レベル制御 | CJK言語切り替えに既知の問題 |
+| **BetterTouchTool** | 自動化/外部ツール | 幅広いジェスチャー対応 | 間接的、ヘルパーツールが必要 |
+| **Hammerspoon** | Luaスクリプティングブリッジ | 無限のカスタマイズ | プログラミング知識が必要 |
 
 ### 主な技術的優位性
 
@@ -172,9 +172,9 @@ ModSwitchIMEは直接IME切り替えのために**TISInputSource API**を使用�
 - **その他**: 多くはCmd+Spaceをシミュレートまたはキーコードを送信（間接的方法）
 
 #### 2. **CJK言語の信頼性**
-- **ModSwitchIME**: 中国語、日本語、韓国語IMEで確実に動作
-- **Karabiner-Elements**: CJK IME切り替えに既知の問題
-- **その他**: 一般的にシステムショートカット経由で動作
+- **ModSwitchIME**: リトライロジックと検証機能により信頼性の高いCJK切り替えを実現
+- **Karabiner-Elements**: CJK言語でのTISSelectInputSourceに関する既知の問題あり
+- **その他**: macOS APIの制限を継承するか、回避策を使用
 
 #### 3. **修飾キーサポート**
 - **ModSwitchIME**: 8個すべての修飾キー（左右×4）を独立して設定可能

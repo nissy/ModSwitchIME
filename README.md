@@ -161,11 +161,11 @@ ModSwitchIME uses **TISInputSource API** for direct IME switching, while most ot
 
 | App | Implementation | Strengths | Limitations |
 |-----|---------------|-----------|-------------|
-| **ModSwitchIME** | TISInputSource API | Direct IME control, all languages | Requires accessibility permission |
-| **英かな (eisukana)** | Key remapping | Simple, lightweight | English⇔Japanese only |
-| **Karabiner-Elements** | Key event interception | Highly customizable | CJK language switching issues |
-| **BetterTouchTool** | System shortcuts | Wide gesture support | Indirect switching method |
-| **Hammerspoon** | Lua automation | Unlimited customization | Requires programming knowledge |
+| **ModSwitchIME** | TISInputSource API with retry | Direct IME control, reliable CJK support | Requires accessibility permission |
+| **英かな (eisukana)** | CGEvent API + TIS | Simple, lightweight | Primarily English⇔Japanese |
+| **Karabiner-Elements** | IOKit HID interception | Highly customizable, low-level control | Known CJK switching issues |
+| **BetterTouchTool** | Automation/External tools | Wide gesture support | Indirect, requires helper tools |
+| **Hammerspoon** | Lua scripting bridge | Unlimited customization | Requires programming knowledge |
 
 ### Key Technical Advantages
 
@@ -174,9 +174,9 @@ ModSwitchIME uses **TISInputSource API** for direct IME switching, while most ot
 - **Others**: Most simulate Cmd+Space or send key codes (indirect method)
 
 #### 2. **CJK Language Reliability**
-- **ModSwitchIME**: Works reliably with Chinese, Japanese, Korean IMEs
-- **Karabiner-Elements**: Known issues with CJK IME switching
-- **Others**: Generally work through system shortcuts
+- **ModSwitchIME**: Implements retry logic and verification for reliable CJK switching
+- **Karabiner-Elements**: Documented issues with TISSelectInputSource for CJK languages
+- **Others**: Inherit macOS API limitations or use workarounds
 
 #### 3. **Modifier Key Support**
 - **ModSwitchIME**: All 8 modifier keys (Left/Right × 4) independently configurable
