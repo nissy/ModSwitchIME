@@ -10,7 +10,7 @@ protocol IMEControlling {
     func forceAscii()
 }
 
-class ImeController: ErrorHandler, IMEControlling {
+final class ImeController: ErrorHandler, IMEControlling {
     // Singleton instance
     static let shared = ImeController()
     
@@ -52,8 +52,9 @@ class ImeController: ErrorHandler, IMEControlling {
         if Thread.isMainThread {
             buildCacheSync()
         } else {
-            DispatchQueue.main.sync {
-                buildCacheSync()
+            // Use async dispatch to avoid potential deadlock
+            DispatchQueue.main.async { [weak self] in
+                self?.buildCacheSync()
             }
         }
     }
@@ -446,11 +447,14 @@ class ImeController: ErrorHandler, IMEControlling {
     // Removed performSwitch and related methods - no longer needed after simplification
     
     func getCurrentInputSource() -> String {
-        return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            timeout: 1.0,
-            defaultValue: "Unknown"
-        ) { [weak self] in
-                self?.getCurrentInputSourceSync() ?? "Unknown"
+        if Thread.isMainThread {
+            return getCurrentInputSourceSync()
+        } else {
+            var result = "Unknown"
+            DispatchQueue.main.sync {
+                result = getCurrentInputSourceSync()
+            }
+            return result
         }
     }
     

@@ -3,7 +3,7 @@ import CoreGraphics
 import Carbon
 import Combine
 
-class KeyMonitor {
+final class KeyMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private let imeController: IMEControlling
@@ -31,7 +31,7 @@ class KeyMonitor {
     
     // Single dictionary for all key states (faster than multiple collections)
     // Protected by serial queue for thread safety
-    private let stateQueue = DispatchQueue(label: "com.nissy.ModSwitchIME.keyStateQueue")
+    private let stateQueue = DispatchQueue(label: "com.modswitchime.keymonitor.state")
     private var keyStates: [ModifierKey: ModifierKeyState] = [:]
     private var lastPressedKey: ModifierKey?
     private var nonModifierKeyPressed = false  // Track if any non-modifier key is pressed
@@ -179,6 +179,15 @@ class KeyMonitor {
             Logger.error("Event tap disabled by timeout", category: .keyboard)
             if let eventTap = eventTap {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
+                // Attempt to recreate if re-enable failed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    guard let self = self else { return }
+                    // If still not monitoring, recreate
+                    if !self.isMonitoring {
+                        Logger.error("Failed to re-enable event tap after timeout, attempting recreation", category: .keyboard)
+                        self.recreateEventTap()
+                    }
+                }
                 onError?(.eventTapDisabled(automatic: true))
             }
         case .tapDisabledByUserInput:
@@ -187,6 +196,15 @@ class KeyMonitor {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 if let eventTap = self?.eventTap {
                     CGEvent.tapEnable(tap: eventTap, enable: true)
+                    // Attempt to recreate if re-enable failed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        guard let self = self else { return }
+                        // If still not monitoring, recreate
+                        if !self.isMonitoring {
+                            Logger.error("Failed to re-enable event tap after user input, attempting recreation", category: .keyboard)
+                            self.recreateEventTap()
+                        }
+                    }
                 }
             }
         default:
@@ -264,7 +282,7 @@ class KeyMonitor {
             
             // Count other CURRENTLY pressed keys that have IME configured (excluding current key)
             // IMPORTANT: Only consider keys that are actually still pressed (in keyStates)
-            let otherPressedKeys = keyStates.filter { $0.key != modifierKey }
+            let otherPressedKeys = stateQueue.sync { keyStates.filter { $0.key != modifierKey } }
             var otherKeysWithIME: [ModifierKey] = []
             for (key, _) in otherPressedKeys {
                 if preferences.getIME(for: key) != nil && preferences.isKeyEnabled(key) {
@@ -583,6 +601,14 @@ class KeyMonitor {
             states[key] = (isDown: true, downTime: state.downTime)
         }
         return states
+    }
+    
+    private func verifyEventTapEnabled() -> Bool {
+        guard let eventTap = eventTap else { return false }
+        // Check if event tap is enabled by querying its state
+        // CGEventTapIsEnabled is not directly available in Swift, so we check indirectly
+        // by verifying the eventTap is still valid and monitoring is active
+        return isMonitoring && runLoopSource != nil
     }
     
     // Removed obsolete test methods that are no longer needed

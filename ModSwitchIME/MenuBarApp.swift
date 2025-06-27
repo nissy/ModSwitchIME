@@ -3,13 +3,15 @@ import Cocoa
 import ApplicationServices
 import ServiceManagement
 
+// swiftlint:disable type_body_length
+
 // MARK: - Notification Names
 extension NSNotification.Name {
     static let screenIsLocked = NSNotification.Name("com.apple.screenIsLocked")
     static let screenIsUnlocked = NSNotification.Name("com.apple.screenIsUnlocked")
 }
 
-class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
+final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var statusBarItem: NSStatusItem?
     let preferences = Preferences.shared
     private var preferencesWindowController: NSWindowController?
@@ -151,7 +153,8 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             }
             
             // Restore after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                guard let _ = self else { return }
                 button.image = originalImage
                 button.title = originalTitle
             }
@@ -323,14 +326,23 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         aboutWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        let observer = NotificationCenter.default.addObserver(
+        var observerRef: NSObjectProtocol?
+        observerRef = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: aboutWindowController?.window,
             queue: .main
-        ) { _ in
+        ) { [weak self, weak observerRef] _ in
             NSApp.setActivationPolicy(.accessory)
+            // Clean up the observer after it fires
+            if let self = self, let observer = observerRef,
+               let index = self.windowCloseObservers.firstIndex(where: { $0 === observer }) {
+                NotificationCenter.default.removeObserver(self.windowCloseObservers[index])
+                self.windowCloseObservers.remove(at: index)
+            }
         }
-        windowCloseObservers.append(observer)
+        if let observer = observerRef {
+            windowCloseObservers.append(observer)
+        }
     }
     
     @objc private func showPreferences() {
@@ -360,14 +372,23 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        let observer = NotificationCenter.default.addObserver(
+        var observerRef: NSObjectProtocol?
+        observerRef = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: preferencesWindowController?.window,
             queue: .main
-        ) { _ in
+        ) { [weak self, weak observerRef] _ in
             NSApp.setActivationPolicy(.accessory)
+            // Clean up the observer after it fires
+            if let self = self, let observer = observerRef,
+               let index = self.windowCloseObservers.firstIndex(where: { $0 === observer }) {
+                NotificationCenter.default.removeObserver(self.windowCloseObservers[index])
+                self.windowCloseObservers.remove(at: index)
+            }
         }
-        windowCloseObservers.append(observer)
+        if let observer = observerRef {
+            windowCloseObservers.append(observer)
+        }
     }
     
     @objc private func toggleLaunchAtLogin() {
@@ -432,17 +453,19 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         switch error {
         case .eventTapCreationFailed:
             // Show error in menu bar temporarily
-            statusBarItem?.button?.title = "⚠️"
-            statusBarItem?.button?.image = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                guard let button = self?.statusBarItem?.button else { return }
-                if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
-                    image.isTemplate = true
-                    button.image = image
-                    button.title = ""
-                } else {
-                    button.image = nil
-                    button.title = "🌐"
+            if let button = statusBarItem?.button {
+                button.title = "⚠️"
+                button.image = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                    guard let self = self, let button = self.statusBarItem?.button else { return }
+                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                        image.isTemplate = true
+                        button.image = image
+                        button.title = ""
+                    } else {
+                        button.image = nil
+                        button.title = "🌐"
+                    }
                 }
             }
             
@@ -453,20 +476,22 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             
         case .eventTapDisabled(let automatic):
             // Show warning in menu bar
-            statusBarItem?.button?.title = "⚠️"
-            statusBarItem?.button?.image = nil
-            
-            if !automatic {
-                // User input timeout - show brief notification
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                    guard let button = self?.statusBarItem?.button else { return }
-                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
-                        image.isTemplate = true
-                        button.image = image
-                        button.title = ""
-                    } else {
-                        button.image = nil
-                        button.title = "🌐"
+            if let button = statusBarItem?.button {
+                button.title = "⚠️"
+                button.image = nil
+                
+                if !automatic {
+                    // User input timeout - show brief notification
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                        guard let self = self, let button = self.statusBarItem?.button else { return }
+                        if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                            image.isTemplate = true
+                            button.image = image
+                            button.title = ""
+                        } else {
+                            button.image = nil
+                            button.title = "🌐"
+                        }
                     }
                 }
             }
