@@ -24,7 +24,7 @@ final class UIThreadSafetyTests: XCTestCase {
     func testImeControllerThreadSafety() {
         // Test ImeController handles thread safety properly
         let expectation = self.expectation(description: "IME operations should complete")
-        let controller = ImeController()
+        let controller = ImeController.shared
         
         DispatchQueue.global(qos: .background).async {
             // This should be handled safely
@@ -117,7 +117,7 @@ final class UIThreadSafetyTests: XCTestCase {
     func testRapidInputSourceSwitching() {
         // Simulate the crash scenario: rapid preference UI interaction
         let preferences = Preferences.createForTesting()
-        let controller = ImeController()
+        let controller = ImeController.shared
         let expectation = XCTestExpectation(description: "Rapid switching")
         expectation.expectedFulfillmentCount = 2
         
@@ -169,7 +169,7 @@ final class UIThreadSafetyTests: XCTestCase {
     
     func testImeControllerTimerSafety() {
         // Test that timer-based cache refresh is thread-safe
-        let controller = ImeController()
+        let controller = ImeController.shared
         let expectation = self.expectation(description: "Timer should fire safely")
         
         // Wait for at least one timer fire (cache refresh is every 30 seconds)

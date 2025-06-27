@@ -19,7 +19,6 @@
 		001A7B432C2F3A1A00E5B4C8 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001A7B422C2F3A1A00E5B4C8 /* Logger.swift */; };
 		3B7B971675E44DF784A30E7D /* InputSourceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E795C604248469D9AD8FA2E /* InputSourceManager.swift */; };
 		4A8B9C7D2E3F5A2100D6E8F9 /* ErrorHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8B9C7C2E3F5A2100D6E8F9 /* ErrorHandling.swift */; };
-		9A034FA2ABB9E3B50D47960F /* ThreadSafetyUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65ADFEEC06C6C30BC74C3EEC /* ThreadSafetyUtils.swift */; };
 		5B9C8D3F2F4A6B2300E7F8AA /* AccessibilityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9C8D3E2F4A6B2300E7F8A9 /* AccessibilityManager.swift */; };
 /* End PBXBuildFile section */
 
@@ -50,7 +49,6 @@
 		3E795C604248469D9AD8FA2E /* InputSourceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceManager.swift; sourceTree = "<group>"; };
 		4154FC862E01CADD0065FB88 /* ModSwitchIMETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ModSwitchIMETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A8B9C7C2E3F5A2100D6E8F9 /* ErrorHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandling.swift; sourceTree = "<group>"; };
-		65ADFEEC06C6C30BC74C3EEC /* ThreadSafetyUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafetyUtils.swift; sourceTree = "<group>"; };
 		5B9C8D3E2F4A6B2300E7F8A9 /* AccessibilityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityManager.swift; sourceTree = "<group>"; };
 		6C9E8F4B2F5B7D3400F9A1BB /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "ModSwitchIME/Config/Base.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -109,7 +107,6 @@
 				001A7B422C2F3A1A00E5B4C8 /* Logger.swift */,
 				3E795C604248469D9AD8FA2E /* InputSourceManager.swift */,
 				4A8B9C7C2E3F5A2100D6E8F9 /* ErrorHandling.swift */,
-				65ADFEEC06C6C30BC74C3EEC /* ThreadSafetyUtils.swift */,
 				5B9C8D3E2F4A6B2300E7F8A9 /* AccessibilityManager.swift */,
 				001A7B392C2F3A1A00E5B4C8 /* Assets.xcassets */,
 				001A7B3B2C2F3A1A00E5B4C8 /* Preview Content */,
@@ -242,7 +239,6 @@
 				001A7B432C2F3A1A00E5B4C8 /* Logger.swift in Sources */,
 				3B7B971675E44DF784A30E7D /* InputSourceManager.swift in Sources */,
 				4A8B9C7D2E3F5A2100D6E8F9 /* ErrorHandling.swift in Sources */,
-				9A034FA2ABB9E3B50D47960F /* ThreadSafetyUtils.swift in Sources */,
 				5B9C8D3F2F4A6B2300E7F8AA /* AccessibilityManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

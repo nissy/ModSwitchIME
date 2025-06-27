@@ -60,7 +60,7 @@ class MemoryLeakTests: XCTestCase {
         // Note: ImeController holds a reference to Preferences.shared singleton,
         // so it won't be deallocated. We'll test that it doesn't create additional leaks.
         autoreleasepool {
-            let imeController = ImeController()
+            let imeController = ImeController.shared
             
             // When: Using controller
             _ = imeController.getCurrentInputSource()
@@ -76,7 +76,7 @@ class MemoryLeakTests: XCTestCase {
     func testImeControllerInputSourceListNoMemoryLeak() {
         // Given: ImeController accessing input sources
         autoreleasepool {
-            let imeController = ImeController()
+            let imeController = ImeController.shared
             
             // When: Getting input source list multiple times
             for _ in 0..<10 {

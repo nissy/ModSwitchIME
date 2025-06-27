@@ -7,7 +7,7 @@ class AsyncOperationTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        imeController = ImeController()
+        imeController = ImeController.shared
         preferences = Preferences.createForTesting()
     }
     

@@ -18,12 +18,11 @@ class KeyMonitorSimpleTest: XCTestCase {
         preferences.setIME("com.justsystems.inputmethod.atok34.Japanese", for: .rightCommand)
         preferences.setKeyEnabled(true, for: .rightCommand)
         
-        // Create KeyMonitor with mock ImeController
-        keyMonitor = KeyMonitor(preferences: preferences)
+        // Create mock ImeController
         mockImeController = FixedMockImeController()
-        #if DEBUG
-        keyMonitor.setImeController(mockImeController)
-        #endif
+        
+        // Create KeyMonitor with mock dependencies
+        keyMonitor = KeyMonitor(preferences: preferences, imeController: mockImeController)
     }
     
     override func tearDown() {

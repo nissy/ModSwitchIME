@@ -18,20 +18,20 @@ ModSwitchIME is a macOS menu bar application that allows you to instantly switch
 
 ### 1. IME Switching with Modifier Keys
 
-<img width="612" src="https://github.com/user-attachments/assets/7b329799-834b-4736-b27a-40979a528261" />
+<img width="612" src="https://github.com/user-attachments/assets/7b95ff17-bb5b-4242-8c4c-04f57dabfcbe" />
 
 #### Freely assign any IME to all 8 modifier keys
 
-- **Left Command** → English, Japanese, Chinese, Korean, French, etc.
-- **Right Command** → ATOK, Google Japanese Input, Kotoeri, etc.
-- **Left Shift** → Chinese (Simplified), Chinese (Traditional), Pinyin, etc.
-- **Right Shift** → Russian, Arabic, Hebrew, etc.
-- **Left Control** → Vietnamese, Thai, Hindi, etc.
-- **Right Control** → Spanish, Portuguese, Italian, etc.
-- **Left Option** → German, Dutch, Swedish, etc.
-- **Right Option** → Turkish, Greek, Polish, etc.
+- **Left/Right Command** ⌘
+- **Left/Right Shift** ⇧
+- **Left/Right Control** ⌃
+- **Left/Right Option** ⌥
 
-Choose from any IME registered in your system.
+Assign your preferred IME to each key. For example:
+- Left Command → English
+- Right Command → Japanese
+- Left Shift → Chinese
+- Any system-registered IME can be configured
 
 #### How it works
 - **Single key press**: Press and release modifier key alone → Switch to assigned IME
@@ -40,25 +40,19 @@ Choose from any IME registered in your system.
 - **Left/Right distinction**: Treats left and right modifier keys as separate keys
 - **Instant switching**: IME switches immediately upon key release (no delay needed)
 
-#### Supported IMEs
-- **Japanese**: Kotoeri, Google Japanese Input, ATOK, Kawasemi, etc.
-- **Chinese**: Simplified (SCIM), Traditional (TCIM), Pinyin, Zhuyin, Cangjie
-- **Korean**: Hangul input
-- **Others**: Vietnamese, Thai, Russian, Arabic, and all system-registered IMEs
-- Full support for third-party IMEs
 
 ### 2. Advanced IME Switching Features
 
-#### Multi-Key Press (Simultaneous Keys)
-When you press multiple modifier keys configured with IMEs:
-- The IME switches to the one assigned to the **last pressed key**
-- Only works when **both keys have IMEs assigned**
+#### Multi-Key Press
+When multiple modifier keys are configured with IMEs:
+- Switches to the IME of the last pressed key during simultaneous press
 - Example: Left Cmd (English) + Right Cmd (Japanese) → Switches to Japanese
 
 #### Smart Detection
 - Distinguishes between single key press and key combinations
-- Prevents accidental switching during shortcuts (Cmd+W, Ctrl+Tab, etc.)
-- Works seamlessly with your existing keyboard shortcuts
+- Helps prevent accidental switching during shortcuts (Cmd+W, Ctrl+Tab, etc.)
+- Designed to work with your existing keyboard shortcuts
+- Note: Detection is based on modifier key events only
 
 ### 3. Auto-Switch on Idle
 
@@ -77,67 +71,37 @@ When you press multiple modifier keys configured with IMEs:
 
 ### 4. Real-time Settings Update
 
-- All settings apply instantly
-- No app restart required
+- Most settings apply instantly without app restart
 - Real-time changeable settings:
   - IME assignments to modifier keys
-  - Detection time adjustment
   - Auto-switch on idle toggle
   - Idle time modification
   - Target IME selection
+- Note: Some system-level changes may require menu bar icon click to refresh
 
-### 5. Menu Bar Features
 
-#### Menu Items
-- **About ModSwitchIME** - Version information and privacy policy
-- **Preferences...** - Open settings window (⌘,)
-- **Grant Permissions...** - Open accessibility settings (when not granted)
-- **Launch at Login** - Toggle auto-start
-- **Restart ModSwitchIME** - Restart the application (⌘R)
-- **Quit** - Exit application (⌘Q)
+### 5. Performance Characteristics
 
-### 6. Automatic Accessibility Permission Detection
-
-- Checks permission status on app launch (no prompt shown)
-- Checks permission status on each menu click
-- Automatically starts key monitoring when permission is granted
-- Visual feedback (✓ icon) when permission is granted
-
-### 7. Launch at Login
-
-- Easy on/off toggle from menu
-- Uses SMAppService API
-- Registers as system startup item
-
-### 8. Performance Characteristics
-
-- **Startup time**: Under 1 second
-- **IME switch speed**: Under 15 milliseconds
-- **CPU usage**: Less than 0.1% when idle
-- **Memory usage**: Under 25MB
+- **Startup time**: Fast application launch
+- **IME switch speed**: Fast switching with 50ms duplicate prevention
+- **CPU usage**: Low resource usage when idle
+- **Memory usage**: Lightweight memory footprint  
 - **Battery impact**: Minimal
 
-### 9. Enhanced Stability & Recovery
+### 6. Enhanced Stability & Recovery
 
 #### Automatic System Recovery
-- **Event tap health monitoring**: Continuously monitors system-level key detection capability
-- **Automatic recovery**: Self-heals when macOS disables key monitoring (e.g., after system updates)
-- **Intelligent throttling**: Prevents duplicate IME switches with 50ms intelligent filtering
+- **Event tap health monitoring**: Monitors system-level key detection capability
+- **Automatic recovery**: Attempts to restore functionality when macOS disables key monitoring
+- **Duplicate prevention**: 50ms throttling prevents accidental duplicate switches
 - **Application focus tracking**: Detects IME state changes when switching between applications
-- **Background resilience**: Maintains reliable operation even during intensive system activity
+- **Background resilience**: Designed for stable operation during system activity
 
-#### Enterprise-Ready Reliability
-- **Zero-downtime operation**: Automatic recovery without user intervention
-- **System integration**: Seamless operation through macOS updates and permission changes
-- **Performance optimization**: Eliminates redundant operations while maintaining responsiveness
+#### Reliability Features
+- **Automatic recovery**: Attempts to restore functionality without user intervention
+- **System integration**: Handles macOS updates and permission changes gracefully
+- **Performance optimization**: Reduces redundant operations while maintaining responsiveness
 
-### 10. IME Selection Interface
-
-- **Language-based grouping**: IMEs are organized by language (Japanese, Chinese, Korean, etc.)
-- **Visual icons**: Each IME displays with language-specific flag icons
-- **Search function**: Quickly find IMEs by name or language
-- **Disabled IME support**: Option to show/hide disabled input sources
-- **All system-registered IMEs**: Full support for third-party IMEs like ATOK, Google Japanese Input
 
 ## Security & Privacy
 
@@ -189,25 +153,55 @@ ModSwitchIME is designed with privacy and security as core principles:
 - Idle time: 1-300 seconds
 - Target: Select any IME
 
-## Comparison with Karabiner-Elements
+## Technical Comparison with Other IME Switchers
 
-| Feature | ModSwitchIME | Karabiner-Elements |
-|---------|-------------|-------------------|
-| **IME switching focused** | ✅ Purpose-built | ❌ General-purpose tool |
-| **Switch to any IME** | ✅ 100% reliable | ❌ CJK languages often fail |
-| **Left/Right key distinction** | ✅ 8 keys individually | ❌ Difficult |
-| **Multi-key IME switching** | ✅ Built-in support | ❌ Complex configuration |
-| **Instant switching** | ✅ No delay needed | ❌ Requires timeout |
-| **Configuration** | ✅ GUI | ❌ JSON editing |
-| **Auto-switch on idle** | ✅ Built-in | ❌ Not supported |
+### Implementation Approaches
+
+ModSwitchIME uses **TISInputSource API** for direct IME switching, while most other apps use **key event simulation**:
+
+| App | Implementation | Strengths | Limitations |
+|-----|---------------|-----------|-------------|
+| **ModSwitchIME** | TISInputSource API | Direct IME control, all languages | Requires accessibility permission |
+| **英かな (eisukana)** | Key remapping | Simple, lightweight | English⇔Japanese only |
+| **Karabiner-Elements** | Key event interception | Highly customizable | CJK language switching issues |
+| **BetterTouchTool** | System shortcuts | Wide gesture support | Indirect switching method |
+| **Hammerspoon** | Lua automation | Unlimited customization | Requires programming knowledge |
+
+### Key Technical Advantages
+
+#### 1. **Direct IME Control**
+- **ModSwitchIME**: Uses TISSelectInputSource for immediate switching
+- **Others**: Most simulate Cmd+Space or send key codes (indirect method)
+
+#### 2. **CJK Language Reliability**
+- **ModSwitchIME**: Works reliably with Chinese, Japanese, Korean IMEs
+- **Karabiner-Elements**: Known issues with CJK IME switching
+- **Others**: Generally work through system shortcuts
+
+#### 3. **Modifier Key Support**
+- **ModSwitchIME**: All 8 modifier keys (Left/Right × 4) independently configurable
+- **英かな**: Left/Right Command only
+- **Others**: Various key combinations, often require complex configuration
+
+#### 4. **Configuration Complexity**
+- **ModSwitchIME**: GUI-based configuration
+- **Karabiner-Elements**: JSON file editing required
+- **Hammerspoon**: Lua programming required
+- **Others**: App-specific interfaces
 
 ### Why Choose ModSwitchIME
 
-1. **IME switching focused** - Designed specifically for multilingual users
-2. **Instant & reliable** - No delays, works with all IMEs including CJK languages
-3. **Advanced features** - Multi-key switching, auto-switch on idle, all in one app
-4. **Easy configuration** - Simple GUI, no technical knowledge required
-5. **Privacy-first** - Detects key presses for switching logic, never captures text content
+**For users who need:**
+1. **Reliable multilingual switching** - Especially for CJK languages
+2. **Maximum modifier key flexibility** - 8 independent keys vs 2-4 in other apps  
+3. **Fast switching** - Direct API calls (50ms duplicate prevention)
+4. **Simple configuration** - GUI vs JSON/programming
+5. **IME-focused design** - Purpose-built vs general automation tools
+
+**Technical uniqueness:**
+- Only app using modern TISInputSource API for comprehensive IME control
+- Precise modifier key detection for single key vs combination
+- State-based implementation for reliable key detection
 
 ## Troubleshooting
 

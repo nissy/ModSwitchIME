@@ -134,7 +134,7 @@ enum ModifierKey: String, CaseIterable, Codable {
 
 // MARK: - Preferences
 
-class Preferences: ObservableObject {
+final class Preferences: ObservableObject {
     static let shared = Preferences()
     
     // For testing purposes only
@@ -236,9 +236,15 @@ class Preferences: ObservableObject {
     }
     
     static func getAvailableInputSources() -> [(id: String, name: String)] {
-        return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: []
-        ) { getAvailableInputSourcesSync() }
+        if Thread.isMainThread {
+            return getAvailableInputSourcesSync()
+        } else {
+            var result: [(id: String, name: String)] = []
+            DispatchQueue.main.sync {
+                result = getAvailableInputSourcesSync()
+            }
+            return result
+        }
     }
     
     private static func getAvailableInputSourcesSync() -> [(id: String, name: String)] {
@@ -300,9 +306,15 @@ class Preferences: ObservableObject {
     // MARK: - Input Source Selection UI Support
     
     static func getAllInputSources(includeDisabled: Bool = false) -> [InputSource] {
-        return ThreadSafetyUtils.executeOnMainThreadWithDefault(
-            defaultValue: []
-        ) { getAllInputSourcesSync(includeDisabled: includeDisabled) }
+        if Thread.isMainThread {
+            return getAllInputSourcesSync(includeDisabled: includeDisabled)
+        } else {
+            var result: [InputSource] = []
+            DispatchQueue.main.sync {
+                result = getAllInputSourcesSync(includeDisabled: includeDisabled)
+            }
+            return result
+        }
     }
     
     private static func getAllInputSourcesSync(includeDisabled: Bool = false) -> [InputSource] {

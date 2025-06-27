@@ -5,17 +5,23 @@ import CoreGraphics
 // Common type alias to avoid conflicts
 typealias ModSwitchIMELogger = ModSwitchIME.Logger
 
+// ImeController already conforms to IMEControlling protocol defined in main app
+
 // Shared Mock ImeController for testing
-class FixedMockImeController: ImeController {
+class FixedMockImeController: IMEControlling {
     var switchToSpecificIMECalls: [(ime: String, time: CFAbsoluteTime)] = []
     private var currentIME: String = "com.apple.keylayout.US"  // Different from test IMEs
     
-    override func switchToSpecificIME(_ targetIMEId: String) {
+    func switchToSpecificIME(_ targetIMEId: String) {
         switchToSpecificIMECalls.append((ime: targetIMEId, time: CFAbsoluteTimeGetCurrent()))
         currentIME = targetIMEId
     }
     
-    override func getCurrentInputSource() -> String {
+    func getCurrentInputSource() -> String {
         return currentIME
+    }
+    
+    func forceAscii() {
+        switchToSpecificIME("com.apple.keylayout.ABC")
     }
 }

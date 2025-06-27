@@ -3,19 +3,26 @@ import Cocoa
 import ApplicationServices
 import ServiceManagement
 
+// swiftlint:disable type_body_length
+
 // MARK: - Notification Names
 extension NSNotification.Name {
     static let screenIsLocked = NSNotification.Name("com.apple.screenIsLocked")
     static let screenIsUnlocked = NSNotification.Name("com.apple.screenIsUnlocked")
 }
 
-class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
+final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var statusBarItem: NSStatusItem?
     let preferences = Preferences.shared
     private var preferencesWindowController: NSWindowController?
     private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     private var windowCloseObservers: [NSObjectProtocol] = []
+    
+    // Shared ImeController instance to avoid duplication
+    // Note: This ImeController will also monitor IME changes for cache updates,
+    // which complements our MenuBarApp monitoring for UI updates
+    private let imeController = ImeController.shared
     
     // Prevent duplicate permission requests
     private var isShowingPermissionAlert = false
@@ -36,6 +43,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         setupKeyMonitor()
         updateLaunchAtLoginMenuItem()
         setupSystemNotifications()
+        setupIMEStateMonitoring()
     }
     
     private func checkAccessibilityPermissions() {
@@ -145,7 +153,8 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             }
             
             // Restore after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                guard let _ = self else { return }
                 button.image = originalImage
                 button.title = originalTitle
             }
@@ -317,14 +326,23 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         aboutWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        let observer = NotificationCenter.default.addObserver(
+        var observerRef: NSObjectProtocol?
+        observerRef = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: aboutWindowController?.window,
             queue: .main
-        ) { _ in
+        ) { [weak self, weak observerRef] _ in
             NSApp.setActivationPolicy(.accessory)
+            // Clean up the observer after it fires
+            if let self = self, let observer = observerRef,
+               let index = self.windowCloseObservers.firstIndex(where: { $0 === observer }) {
+                NotificationCenter.default.removeObserver(self.windowCloseObservers[index])
+                self.windowCloseObservers.remove(at: index)
+            }
         }
-        windowCloseObservers.append(observer)
+        if let observer = observerRef {
+            windowCloseObservers.append(observer)
+        }
     }
     
     @objc private func showPreferences() {
@@ -354,14 +372,23 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
         
         // Restore activation policy when window closes
-        let observer = NotificationCenter.default.addObserver(
+        var observerRef: NSObjectProtocol?
+        observerRef = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: preferencesWindowController?.window,
             queue: .main
-        ) { _ in
+        ) { [weak self, weak observerRef] _ in
             NSApp.setActivationPolicy(.accessory)
+            // Clean up the observer after it fires
+            if let self = self, let observer = observerRef,
+               let index = self.windowCloseObservers.firstIndex(where: { $0 === observer }) {
+                NotificationCenter.default.removeObserver(self.windowCloseObservers[index])
+                self.windowCloseObservers.remove(at: index)
+            }
         }
-        windowCloseObservers.append(observer)
+        if let observer = observerRef {
+            windowCloseObservers.append(observer)
+        }
     }
     
     @objc private func toggleLaunchAtLogin() {
@@ -426,17 +453,19 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         switch error {
         case .eventTapCreationFailed:
             // Show error in menu bar temporarily
-            statusBarItem?.button?.title = "⚠️"
-            statusBarItem?.button?.image = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                guard let button = self?.statusBarItem?.button else { return }
-                if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
-                    image.isTemplate = true
-                    button.image = image
-                    button.title = ""
-                } else {
-                    button.image = nil
-                    button.title = "🌐"
+            if let button = statusBarItem?.button {
+                button.title = "⚠️"
+                button.image = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                    guard let self = self, let button = self.statusBarItem?.button else { return }
+                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                        image.isTemplate = true
+                        button.image = image
+                        button.title = ""
+                    } else {
+                        button.image = nil
+                        button.title = "🌐"
+                    }
                 }
             }
             
@@ -447,20 +476,22 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             
         case .eventTapDisabled(let automatic):
             // Show warning in menu bar
-            statusBarItem?.button?.title = "⚠️"
-            statusBarItem?.button?.image = nil
-            
-            if !automatic {
-                // User input timeout - show brief notification
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                    guard let button = self?.statusBarItem?.button else { return }
-                    if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
-                        image.isTemplate = true
-                        button.image = image
-                        button.title = ""
-                    } else {
-                        button.image = nil
-                        button.title = "🌐"
+            if let button = statusBarItem?.button {
+                button.title = "⚠️"
+                button.image = nil
+                
+                if !automatic {
+                    // User input timeout - show brief notification
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                        guard let self = self, let button = self.statusBarItem?.button else { return }
+                        if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: "IME Switcher") {
+                            image.isTemplate = true
+                            button.image = image
+                            button.title = ""
+                        } else {
+                            button.image = nil
+                            button.title = "🌐"
+                        }
                     }
                 }
             }
@@ -504,6 +535,30 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             name: .screenIsUnlocked,
             object: nil
         )
+    }
+    
+    // MARK: - IME State Monitoring
+    
+    private func setupIMEStateMonitoring() {
+        // Monitor system IME state changes for real-time icon updates
+        // Note: ImeController also monitors this notification for cache updates
+        // This creates two observers but serves different purposes:
+        // - ImeController: Updates internal cache
+        // - MenuBarApp: Updates menu bar icon
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(imeStateChanged),
+            name: NSNotification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
+            object: nil
+        )
+        
+        // Initial icon update
+        updateIconWithCurrentIME()
+    }
+    
+    @objc private func imeStateChanged(_ notification: Notification) {
+        Logger.debug("IME state changed notification received", category: .main)
+        updateIconWithCurrentIME()
     }
     
     @objc private func systemWillSleep(_ notification: Notification) {
@@ -652,6 +707,67 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         DistributedNotificationCenter.default().removeObserver(self)
+    }
+}
+
+// MARK: - IME Icon Management Extension
+
+extension MenuBarApp {
+    private func updateIconWithCurrentIME() {
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Note: IME state reading doesn't require accessibility permission
+            // Only KeyMonitor functionality requires it, but menu bar icon can always be updated
+            let currentIME = self.getCurrentIME()
+            self.updateIconForIME(currentIME)
+        }
+    }
+    
+    private func getCurrentIME() -> String {
+        // Use shared ImeController instance to avoid duplication
+        return imeController.getCurrentInputSource()
+    }
+    
+    private func updateIconForIME(_ imeId: String) {
+        guard let button = statusBarItem?.button else { return }
+        
+        // Determine icon based on IME type
+        let (iconName, fallbackText, tooltip) = getIconForIME(imeId)
+        
+        // Update icon
+        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: tooltip) {
+            image.isTemplate = true
+            button.image = image
+            button.imagePosition = .imageOnly
+            button.title = ""
+        } else {
+            // Fallback to text
+            button.image = nil
+            button.title = fallbackText
+        }
+        
+        button.toolTip = tooltip
+        
+        Logger.debug("Updated icon for IME: \(imeId) -> \(iconName)", category: .main)
+    }
+    
+    private func getIconForIME(_ imeId: String) -> (String, String, String) {
+        // Determine icon based on IME ID
+        if imeId.contains("ABC") || imeId.contains("US") {
+            return ("globe", "🌐", "ModSwitchIME - English (\(imeId))")
+        } else if imeId.contains("Japanese") || imeId.contains("Hiragana") {
+            return ("globe.asia.australia", "🇯🇵", "ModSwitchIME - Japanese (\(imeId))")
+        } else if imeId.contains("Korean") {
+            return ("globe.asia.australia", "🇰🇷", "ModSwitchIME - Korean (\(imeId))")
+        } else if imeId.contains("Chinese") || imeId.contains("Pinyin") || 
+                  imeId.contains("Simplified") || imeId.contains("Traditional") {
+            return ("globe.asia.australia", "🇨🇳", "ModSwitchIME - Chinese (\(imeId))")
+        } else {
+            // Generic non-English IME
+            return ("globe.central.south.asia", "🌏", "ModSwitchIME - IME (\(imeId))")
+        }
     }
 }
 

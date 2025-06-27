@@ -150,7 +150,7 @@ class ErrorHandlingTests: XCTestCase {
         // Instead, we test that the class can be instantiated without crashing
         
         // Given: ImeController can be instantiated
-        let imeController = ImeController()
+        let imeController = ImeController.shared
         
         // When: Basic initialization check
         // Then: Should not crash during instantiation

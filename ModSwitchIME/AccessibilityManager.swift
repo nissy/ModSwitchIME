@@ -2,7 +2,7 @@ import Foundation
 import ApplicationServices
 import AppKit
 
-class AccessibilityManager {
+final class AccessibilityManager {
     static let shared = AccessibilityManager()
     
     private var lastCheckTime = Date(timeIntervalSince1970: 0)
