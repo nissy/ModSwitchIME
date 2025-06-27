@@ -299,7 +299,7 @@ class UIStateTransitionTests: XCTestCase {
     
     func testInputMethodStateTransitions() {
         // Given: IME controller
-        let imeController = ImeController()
+        let imeController = ImeController.shared
         let initialSource = imeController.getCurrentInputSource()
         
         // When: Forcing ASCII and switching to specific IME

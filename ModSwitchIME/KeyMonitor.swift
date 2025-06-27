@@ -6,11 +6,12 @@ import Combine
 class KeyMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var imeController = ImeController()
+    private let imeController: IMEControlling
     private let preferences: Preferences
     
-    init(preferences: Preferences = Preferences.shared) {
+    init(preferences: Preferences = Preferences.shared, imeController: IMEControlling = ImeController.shared) {
         self.preferences = preferences
+        self.imeController = imeController
     }
     private var isRunning = false
     private var cancellables = Set<AnyCancellable>()
@@ -549,10 +550,6 @@ class KeyMonitor {
             }
             return timestamps
         }
-    }
-    
-    func setImeController(_ controller: ImeController) {
-        self.imeController = controller
     }
     
     func simulateFlagsChanged(keyCode: Int64, flags: CGEventFlags) {

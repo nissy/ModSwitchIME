@@ -17,6 +17,11 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var keyMonitor: KeyMonitor?
     private var windowCloseObservers: [NSObjectProtocol] = []
     
+    // Shared ImeController instance to avoid duplication
+    // Note: This ImeController will also monitor IME changes for cache updates,
+    // which complements our MenuBarApp monitoring for UI updates
+    private let imeController = ImeController.shared
+    
     // Prevent duplicate permission requests
     private var isShowingPermissionAlert = false
     private var lastPermissionCheckTime = Date(timeIntervalSince1970: 0)
@@ -36,6 +41,7 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         setupKeyMonitor()
         updateLaunchAtLoginMenuItem()
         setupSystemNotifications()
+        setupIMEStateMonitoring()
     }
     
     private func checkAccessibilityPermissions() {
@@ -506,6 +512,30 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         )
     }
     
+    // MARK: - IME State Monitoring
+    
+    private func setupIMEStateMonitoring() {
+        // Monitor system IME state changes for real-time icon updates
+        // Note: ImeController also monitors this notification for cache updates
+        // This creates two observers but serves different purposes:
+        // - ImeController: Updates internal cache
+        // - MenuBarApp: Updates menu bar icon
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(imeStateChanged),
+            name: NSNotification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
+            object: nil
+        )
+        
+        // Initial icon update
+        updateIconWithCurrentIME()
+    }
+    
+    @objc private func imeStateChanged(_ notification: Notification) {
+        Logger.debug("IME state changed notification received", category: .main)
+        updateIconWithCurrentIME()
+    }
+    
     @objc private func systemWillSleep(_ notification: Notification) {
         // System is going to sleep
         Logger.info("System will sleep - stopping KeyMonitor", category: .main)
@@ -652,6 +682,67 @@ class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         DistributedNotificationCenter.default().removeObserver(self)
+    }
+}
+
+// MARK: - IME Icon Management Extension
+
+extension MenuBarApp {
+    private func updateIconWithCurrentIME() {
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Note: IME state reading doesn't require accessibility permission
+            // Only KeyMonitor functionality requires it, but menu bar icon can always be updated
+            let currentIME = self.getCurrentIME()
+            self.updateIconForIME(currentIME)
+        }
+    }
+    
+    private func getCurrentIME() -> String {
+        // Use shared ImeController instance to avoid duplication
+        return imeController.getCurrentInputSource()
+    }
+    
+    private func updateIconForIME(_ imeId: String) {
+        guard let button = statusBarItem?.button else { return }
+        
+        // Determine icon based on IME type
+        let (iconName, fallbackText, tooltip) = getIconForIME(imeId)
+        
+        // Update icon
+        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: tooltip) {
+            image.isTemplate = true
+            button.image = image
+            button.imagePosition = .imageOnly
+            button.title = ""
+        } else {
+            // Fallback to text
+            button.image = nil
+            button.title = fallbackText
+        }
+        
+        button.toolTip = tooltip
+        
+        Logger.debug("Updated icon for IME: \(imeId) -> \(iconName)", category: .main)
+    }
+    
+    private func getIconForIME(_ imeId: String) -> (String, String, String) {
+        // Determine icon based on IME ID
+        if imeId.contains("ABC") || imeId.contains("US") {
+            return ("globe", "🌐", "ModSwitchIME - English (\(imeId))")
+        } else if imeId.contains("Japanese") || imeId.contains("Hiragana") {
+            return ("globe.asia.australia", "🇯🇵", "ModSwitchIME - Japanese (\(imeId))")
+        } else if imeId.contains("Korean") {
+            return ("globe.asia.australia", "🇰🇷", "ModSwitchIME - Korean (\(imeId))")
+        } else if imeId.contains("Chinese") || imeId.contains("Pinyin") || 
+                  imeId.contains("Simplified") || imeId.contains("Traditional") {
+            return ("globe.asia.australia", "🇨🇳", "ModSwitchIME - Chinese (\(imeId))")
+        } else {
+            // Generic non-English IME
+            return ("globe.central.south.asia", "🌏", "ModSwitchIME - IME (\(imeId))")
+        }
     }
 }
 

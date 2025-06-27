@@ -3,17 +3,34 @@ import Carbon
 import CoreGraphics
 import Cocoa
 
-class ImeController: ErrorHandler {
+// Protocol for testable IME controller
+protocol IMEControlling {
+    func switchToSpecificIME(_ targetIMEId: String)
+    func getCurrentInputSource() -> String
+    func forceAscii()
+}
+
+class ImeController: ErrorHandler, IMEControlling {
+    // Singleton instance
+    static let shared = ImeController()
+    
+    // Factory method for testing
+    #if DEBUG
+    static func createForTesting() -> ImeController {
+        return ImeController()
+    }
+    #endif
+    
     private let preferences = Preferences.shared
     var onError: ((ModSwitchIMEError) -> Void)?
     
     // Thread-safe cache for input sources
     private var inputSourceCache: [String: TISInputSource] = [:]
-    private let cacheQueue = DispatchQueue(label: "com.modswitchime.cache", attributes: .concurrent)
+    private let cacheQueue = DispatchQueue(label: "com.modswitchime.cache")
     
     // Track last switched IME for app focus verification
     private var lastSwitchedIME: String?
-    private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME", attributes: .concurrent)
+    private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME")
     
     // Throttling for IME switch requests
     private var lastSwitchTime: CFAbsoluteTime = 0
@@ -21,7 +38,7 @@ class ImeController: ErrorHandler {
     private let throttleInterval: TimeInterval = 0.05 // 50ms
     private let throttleQueue = DispatchQueue(label: "com.modswitchime.throttle")
     
-    init() {
+    private init() {
         // Initialize cache on startup for immediate availability
         initializeCache()
         // Start monitoring for IME changes
@@ -66,8 +83,8 @@ class ImeController: ErrorHandler {
             }
         }
         
-        // Update cache atomically with barrier
-        cacheQueue.async(flags: .barrier) { [weak self] in
+        // Update cache atomically
+        cacheQueue.async { [weak self] in
             self?.inputSourceCache = newCache
         }
         Logger.debug("IME cache initialized with \(newCache.count) input sources", category: .ime)
@@ -417,7 +434,7 @@ class ImeController: ErrorHandler {
     }
     
     private func setLastSwitchedIME(_ imeId: String) {
-        lastSwitchedIMEQueue.async(flags: .barrier) { [weak self] in
+        lastSwitchedIMEQueue.async { [weak self] in
             self?.lastSwitchedIME = imeId
         }
     }

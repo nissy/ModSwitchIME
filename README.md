@@ -117,7 +117,21 @@ When you press multiple modifier keys configured with IMEs:
 - **Memory usage**: Under 25MB
 - **Battery impact**: Minimal
 
-### 9. IME Selection Interface
+### 9. Enhanced Stability & Recovery
+
+#### Automatic System Recovery
+- **Event tap health monitoring**: Continuously monitors system-level key detection capability
+- **Automatic recovery**: Self-heals when macOS disables key monitoring (e.g., after system updates)
+- **Intelligent throttling**: Prevents duplicate IME switches with 50ms intelligent filtering
+- **Application focus tracking**: Detects IME state changes when switching between applications
+- **Background resilience**: Maintains reliable operation even during intensive system activity
+
+#### Enterprise-Ready Reliability
+- **Zero-downtime operation**: Automatic recovery without user intervention
+- **System integration**: Seamless operation through macOS updates and permission changes
+- **Performance optimization**: Eliminates redundant operations while maintaining responsiveness
+
+### 10. IME Selection Interface
 
 - **Language-based grouping**: IMEs are organized by language (Japanese, Chinese, Korean, etc.)
 - **Visual icons**: Each IME displays with language-specific flag icons
@@ -200,7 +214,15 @@ ModSwitchIME is designed with privacy and security as core principles:
 ### IME not switching
 
 1. Enable ModSwitchIME in System Settings → Privacy & Security → Accessibility
-2. Restart the app
+2. The app automatically detects and recovers from system permission issues
+3. If issues persist, restart the app - it will automatically restore full functionality
+
+### System Updates or Permission Changes
+
+ModSwitchIME includes automatic recovery features:
+- **Automatic detection**: Monitors system permission status continuously
+- **Self-healing**: Automatically restores functionality after macOS updates
+- **No manual intervention**: Recovery happens in the background without user action
 
 ## License
 

@@ -9,7 +9,7 @@ class KeyMonitorIntegrationTests: XCTestCase {
     override func setUp() {
         super.setUp()
         keyMonitor = KeyMonitor()
-        imeController = ImeController()
+        imeController = ImeController.shared
         preferences = Preferences.createForTesting()
     }
     

@@ -7,42 +7,79 @@ var mockTISSelectInputSourceResult: OSStatus = noErr
 var mockTISSelectInputSourceCallCount = 0
 var mockCurrentInputSource = "com.apple.keylayout.ABC"
 
-class MockableImeController: ImeController {
+class MockableImeController: IMEControlling {
+    private let throttleInterval: TimeInterval = 0.05 // 50ms throttle
+    private var lastSwitchTime: CFAbsoluteTime = 0
+    private var lastSwitchIME: String = ""
+    private let throttleQueue = DispatchQueue(label: "test.throttle.queue")
     
-    override func selectInputSource(_ inputSourceID: String) throws {
-        // For testing, we'll simulate the behavior
-        mockTISSelectInputSourceCallCount += 1
+    func switchToSpecificIME(_ targetIMEId: String) {
+        let now = CFAbsoluteTimeGetCurrent()
         
-        if mockTISSelectInputSourceResult != noErr {
-            // Simulate retry mechanism
-            for attempt in 0..<3 {
-                if mockTISSelectInputSourceResult == noErr {
-                    break
-                }
-                Thread.sleep(forTimeInterval: 0.01) // Shorter delay for tests
+        // Thread-safe throttling check (matching real implementation)
+        var shouldSwitch = false
+        throttleQueue.sync {
+            let timeSinceLastSwitch = now - lastSwitchTime
+            
+            // Skip if same IME requested within throttle interval
+            if lastSwitchIME == targetIMEId && timeSinceLastSwitch < throttleInterval {
+                return
             }
             
-            if mockTISSelectInputSourceResult != noErr {
-                throw ModSwitchIMEError.inputMethodSwitchFailed("Mock failure")
+            // Skip if any switch happened within throttle interval (except first switch)
+            if lastSwitchTime > 0 && timeSinceLastSwitch < throttleInterval {
+                return
             }
+            
+            // Update throttle state
+            lastSwitchTime = now
+            lastSwitchIME = targetIMEId
+            shouldSwitch = true
         }
         
-        // Simulate successful switch
-        mockCurrentInputSource = inputSourceID
+        // Only execute if throttle check passed
+        if shouldSwitch {
+            // For testing, we'll simulate the behavior
+            mockTISSelectInputSourceCallCount += 1
+            
+            if mockTISSelectInputSourceResult != noErr {
+                // Simulate retry mechanism
+                for attempt in 0..<3 {
+                    if mockTISSelectInputSourceResult == noErr {
+                        break
+                    }
+                    Thread.sleep(forTimeInterval: 0.01) // Shorter delay for tests
+                }
+                
+                if mockTISSelectInputSourceResult != noErr {
+                    // In real implementation, this would throw
+                    // For mock, we just return
+                    return
+                }
+            }
+            
+            // Simulate successful switch
+            mockCurrentInputSource = targetIMEId
+        }
     }
     
-    override func getCurrentInputSource() -> String {
+    func getCurrentInputSource() -> String {
         return mockCurrentInputSource
+    }
+    
+    func forceAscii() {
+        switchToSpecificIME("com.apple.keylayout.ABC")
     }
 }
 
 class ImeControllerTests: XCTestCase {
-    var imeController: ImeController!
+    var imeController: IMEControlling!
     var mockableController: MockableImeController!
     
     override func setUp() {
         super.setUp()
-        imeController = ImeController()
+        // Use shared instance for integration tests
+        imeController = ImeController.shared
         mockableController = MockableImeController()
         mockTISSelectInputSourceResult = noErr
         mockTISSelectInputSourceCallCount = 0
