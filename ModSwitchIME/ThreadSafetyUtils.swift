@@ -22,8 +22,12 @@ enum ThreadSafetyUtils {
             }
             
             // Wait with timeout to prevent infinite wait
-            if semaphore.wait(timeout: .now() + timeout) == .timedOut {
+            let waitResult = semaphore.wait(timeout: .now() + timeout)
+            if waitResult == .timedOut {
                 Logger.error("Critical: Timeout executing on main thread - returning nil to prevent crash", category: .main)
+                // Note: The async block will still signal the semaphore when it completes,
+                // but we've already moved on. This is safe because the semaphore will be
+                // deallocated after this scope.
                 return nil
             }
             
@@ -53,8 +57,12 @@ enum ThreadSafetyUtils {
                 semaphore.signal()
             }
             
-            if semaphore.wait(timeout: .now() + timeout) == .timedOut {
+            let waitResult = semaphore.wait(timeout: .now() + timeout)
+            if waitResult == .timedOut {
                 Logger.warning("Timeout executing on main thread, returning default value", category: .main)
+                // Note: The async block will still signal the semaphore when it completes,
+                // but we've already moved on. This is safe because the semaphore will be
+                // deallocated after this scope.
                 return defaultValue
             }
             
