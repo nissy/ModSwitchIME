@@ -552,12 +552,45 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             object: nil
         )
         
+        // Also monitor our internal IME switch notifications for immediate updates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInternalIMESwitch),
+            name: NSNotification.Name("ModSwitchIME.didSwitchIME"),
+            object: nil
+        )
+        
+        // Monitor for UI refresh requests (e.g., after errors)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleUIRefreshRequest),
+            name: NSNotification.Name("ModSwitchIME.shouldRefreshUI"),
+            object: nil
+        )
+        
         // Initial icon update
         updateIconWithCurrentIME()
     }
     
     @objc private func imeStateChanged(_ notification: Notification) {
         Logger.debug("IME state changed notification received", category: .main)
+        updateIconWithCurrentIME()
+    }
+    
+    @objc private func handleInternalIMESwitch(_ notification: Notification) {
+        Logger.debug("Internal IME switch notification received", category: .main)
+        // Update icon immediately based on the switched IME
+        if let imeId = notification.userInfo?["imeId"] as? String {
+            updateIconForIME(imeId)
+        } else {
+            // Fallback to current IME check
+            updateIconWithCurrentIME()
+        }
+    }
+    
+    @objc private func handleUIRefreshRequest(_ notification: Notification) {
+        Logger.debug("UI refresh request received", category: .main)
+        // Always update based on actual current IME state
         updateIconWithCurrentIME()
     }
     

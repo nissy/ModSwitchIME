@@ -6,7 +6,7 @@ MARKETING_VERSION = 1.1.0
 
 // Build number (incremented for each build)
 // Can be set to $(CURRENT_PROJECT_VERSION) for automatic increment
-CURRENT_PROJECT_VERSION = 2
+CURRENT_PROJECT_VERSION = 3
 
 // Bundle version string (typically same as MARKETING_VERSION)
 BUNDLE_VERSION_STRING = $(MARKETING_VERSION)
