@@ -15,6 +15,12 @@ class MockableImeController: IMEControlling {
     
     func switchToSpecificIME(_ targetIMEId: String) {
         let now = CFAbsoluteTimeGetCurrent()
+        let currentIME = getCurrentInputSource()
+        
+        // Skip if already on target IME
+        if currentIME == targetIMEId {
+            return
+        }
         
         // Thread-safe throttling check (matching real implementation)
         var shouldSwitch = false
@@ -22,7 +28,8 @@ class MockableImeController: IMEControlling {
             let timeSinceLastSwitch = now - lastSwitchTime
             
             // Skip if same IME requested within throttle interval
-            if lastSwitchIME == targetIMEId && timeSinceLastSwitch < throttleInterval {
+            // Changed to check against actual current IME instead of internal state
+            if currentIME == targetIMEId && timeSinceLastSwitch < throttleInterval {
                 return
             }
             
@@ -41,6 +48,7 @@ class MockableImeController: IMEControlling {
         if shouldSwitch {
             // For testing, we'll simulate the behavior
             mockTISSelectInputSourceCallCount += 1
+            mockCurrentInputSource = targetIMEId // Simulate successful switch
             
             if mockTISSelectInputSourceResult != noErr {
                 // Simulate retry mechanism
@@ -371,6 +379,7 @@ class ImeControllerTests: XCTestCase {
     func testIMESwitchRequestThrottling() {
         // Given: Multiple rapid switch requests to same IME
         let targetIME = "com.apple.keylayout.Japanese"
+        let differentIME = "com.apple.keylayout.US"
         
         // Reset mock state
         mockTISSelectInputSourceCallCount = 0
@@ -386,15 +395,19 @@ class ImeControllerTests: XCTestCase {
             mockableController.switchToSpecificIME(targetIME)
         }
         
-        // Should still be 1 (throttled)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Rapid requests should be throttled")
+        // Should still be 1 (already on target IME, so skipped)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Requests to current IME should be skipped")
+        
+        // Try switching to a different IME within throttle window - should still be throttled
+        mockableController.switchToSpecificIME(differentIME)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Different IME within throttle window should be throttled")
         
         // Wait for throttle interval to pass
         Thread.sleep(forTimeInterval: 0.06) // 60ms > 50ms throttle interval
         
-        // Next request should execute
-        mockableController.switchToSpecificIME(targetIME)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Request after throttle interval should execute")
+        // Next request to different IME should execute
+        mockableController.switchToSpecificIME(differentIME)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Request to different IME after throttle interval should execute")
     }
     
     func testIMESwitchDifferentIMEsWithinThrottleWindow() {
@@ -422,5 +435,50 @@ class ImeControllerTests: XCTestCase {
         mockableController.switchToSpecificIME(ime2)
         XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Different IME after throttle interval should execute")
         XCTAssertEqual(mockableController.getCurrentInputSource(), ime2, "Should switch to second IME")
+    }
+    
+    func testIMESwitchWithActualIMEMismatch() {
+        // Given: Internal state thinks we're on Japanese, but actual system is on ABC
+        let targetIME = "com.apple.keylayout.Japanese"
+        let actualIME = "com.apple.keylayout.ABC"
+        
+        // Reset mock state
+        mockTISSelectInputSourceCallCount = 0
+        mockCurrentInputSource = actualIME // Actual system IME
+        
+        // Simulate that we previously switched to Japanese
+        mockableController.switchToSpecificIME(targetIME)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "First switch should execute")
+        
+        // Simulate system changing IME externally (e.g., window focus change)
+        mockCurrentInputSource = actualIME
+        
+        // Wait for throttle interval to pass
+        Thread.sleep(forTimeInterval: 0.06) // After throttle window
+        
+        // When: User tries to switch to Japanese again
+        mockableController.switchToSpecificIME(targetIME)
+        
+        // Then: Should execute because actual IME is different from target
+        // With our fix, this correctly detects the mismatch and switches
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, 
+                      "Should switch when actual IME differs from target")
+    }
+    
+    func testIMESwitchToActualCurrentIME() {
+        // Given: System is already on the target IME
+        let targetIME = "com.apple.keylayout.Japanese"
+        
+        // Reset mock state
+        mockTISSelectInputSourceCallCount = 0
+        mockCurrentInputSource = targetIME // Already on target IME
+        
+        // When: User tries to switch to the same IME
+        mockableController.switchToSpecificIME(targetIME)
+        
+        // Then: Should skip the switch since we're already on target IME
+        // Note: This requires implementation change to check actual IME first
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 0, 
+                      "Should not switch when already on target IME")
     }
 }
