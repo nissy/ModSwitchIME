@@ -2,7 +2,7 @@
 // Centralized version configuration for ModSwitchIME
 
 // Marketing version shown to users (e.g., 1.0.0, 1.2.3)
-MARKETING_VERSION = 1.1.0
+MARKETING_VERSION = 1.1.1
 
 // Build number (incremented for each build)
 // Can be set to $(CURRENT_PROJECT_VERSION) for automatic increment
