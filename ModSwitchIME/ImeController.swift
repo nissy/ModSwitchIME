@@ -32,11 +32,7 @@ final class ImeController: ErrorHandler, IMEControlling {
     private var lastSwitchedIME: String?
     private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME")
     
-    // Throttling for IME switch requests
-    private var lastSwitchTime: CFAbsoluteTime = 0
-    private var lastSwitchIME: String?
-    private let throttleInterval: TimeInterval = 0.05 // 50ms
-    private let throttleQueue = DispatchQueue(label: "com.modswitchime.throttle")
+    // Removed throttling - redundant with getCurrentInputSource() check
     
     private init() {
         // Initialize cache on startup for immediate availability
@@ -135,37 +131,14 @@ final class ImeController: ErrorHandler, IMEControlling {
             return
         }
         
-        let now = CFAbsoluteTimeGetCurrent()
-        
-        // Thread-safe throttling check
-        var shouldSwitch = false
-        throttleQueue.sync {
-            // Check if enough time has passed since last switch
-            let timeSinceLastSwitch = now - lastSwitchTime
-            
-            // Skip only if we're trying to switch too soon
-            // Remove the check for lastSwitchIME == imeId since we already checked actual IME above
-            if lastSwitchTime > 0 && timeSinceLastSwitch < throttleInterval {
-                Logger.debug("Throttling IME switch request (too soon): \(imeId)", category: .ime)
-                return
-            }
-            
-            // Update throttle state
-            lastSwitchTime = now
-            lastSwitchIME = imeId
-            shouldSwitch = true
-        }
-        
-        // Execute immediately if throttle check passed
-        if shouldSwitch {
-            do {
-                try selectInputSource(imeId)
-            } catch {
-                let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
-                handleError(imeError)
-                // Notify UI to refresh based on actual state
-                postUIRefreshNotification()
-            }
+        // Execute immediately - no throttling needed since we already checked current IME
+        do {
+            try selectInputSource(imeId)
+        } catch {
+            let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
+            handleError(imeError)
+            // Notify UI to refresh based on actual state
+            postUIRefreshNotification()
         }
     }
     
@@ -217,11 +190,9 @@ final class ImeController: ErrorHandler, IMEControlling {
             for attempt in 0..<3 {
                 let result = TISSelectInputSource(source)
                 if result == noErr {
-                    // Success - notify immediately for UI update
-                    postIMESwitchNotification(inputSourceID)
-                    // Verify the switch after a short delay
-                    verifyIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
-                    // Track successful switch
+                    // Hybrid approach: verify actual switch before notifying
+                    performHybridIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
+                    // Track successful switch request
                     setLastSwitchedIME(inputSourceID)
                     return
                 }
@@ -256,10 +227,9 @@ final class ImeController: ErrorHandler, IMEControlling {
             for attempt in 0..<3 {
                 let result = TISSelectInputSource(source)
                 if result == noErr {
-                    // Success - notify immediately for UI update
-                    postIMESwitchNotification(inputSourceID)
-                    verifyIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
-                    // Track successful switch
+                    // Hybrid approach: verify actual switch before notifying
+                    performHybridIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
+                    // Track successful switch request
                     setLastSwitchedIME(inputSourceID)
                     return
                 }
@@ -276,38 +246,126 @@ final class ImeController: ErrorHandler, IMEControlling {
         throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
     }
     
+    private func performHybridIMESwitch(expectedIME: String, currentIME: String) {
+        // Hybrid approach: Check actual switch after a short delay before notifying
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            guard let self = self else { return }
+            
+            let actualIME = self.getCurrentInputSource()
+            
+            if actualIME == expectedIME {
+                // Success - notify UI update
+                Logger.debug("IME switch confirmed: \(currentIME) -> \(actualIME)", category: .ime)
+                self.postIMESwitchNotification(expectedIME)
+                
+                // Schedule additional verification for edge cases
+                self.scheduleAdditionalVerification(expectedIME: expectedIME, delay: 0.05)
+            } else if actualIME == currentIME {
+                // Not switched yet - schedule another check
+                Logger.debug("IME not switched yet, scheduling verification", category: .ime)
+                // Prevent infinite recursion by limiting retry depth
+                self.verifyIMESwitchWithLimit(expectedIME: expectedIME, currentIME: currentIME, retryCount: 1)
+            } else {
+                // Switched to unexpected IME
+                Logger.warning("IME switched to unexpected: \(actualIME) (expected: \(expectedIME))", category: .ime)
+                // Notify UI with actual state
+                self.postUIRefreshNotification()
+            }
+        }
+    }
+    
+    private func scheduleAdditionalVerification(expectedIME: String, delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self else { return }
+            
+            let actualIME = self.getCurrentInputSource()
+            if actualIME != expectedIME {
+                Logger.warning("Additional verification: IME mismatch detected (expected: \(expectedIME), actual: \(actualIME))", category: .ime)
+                // Correct the UI state
+                self.postUIRefreshNotification()
+            }
+        }
+    }
+    
     private func verifyIMESwitch(expectedIME: String, currentIME: String) {
-        // Verify the switch after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            let newIME = self?.getCurrentInputSource() ?? "Unknown"
+        verifyIMESwitchWithLimit(expectedIME: expectedIME, currentIME: currentIME, retryCount: 1)
+    }
+    
+    private func verifyIMESwitchWithLimit(expectedIME: String, currentIME: String, retryCount: Int) {
+        guard retryCount <= 3 else {
+            Logger.warning("Max retry attempts reached for IME switch verification", category: .ime)
+            postUIRefreshNotification()
+            return
+        }
+        
+        // Verify the switch after a short delay (reduced from 0.1 to 0.05)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self = self else { return }
+            let newIME = self.getCurrentInputSource()
             
             if newIME == expectedIME {
                 Logger.debug("IME switch verified: \(currentIME) -> \(newIME)", category: .ime)
+                // Check if notification already sent to prevent duplicates
+                var needsNotification = false
+                self.notificationQueue.sync {
+                    needsNotification = self.lastNotifiedIME != expectedIME
+                }
+                if needsNotification {
+                    self.postIMESwitchNotification(expectedIME)
+                }
             } else if newIME == currentIME {
                 Logger.warning("IME switch may have failed: still at \(currentIME)", category: .ime)
-                // Retry once more
-                self?.retryIMESwitch(targetIME: expectedIME)
+                // Retry with incremented count
+                if retryCount < 3 {
+                    self.retryIMESwitchWithLimit(targetIME: expectedIME, retryCount: retryCount + 1)
+                } else {
+                    self.postUIRefreshNotification()
+                }
             } else {
                 Logger.warning("IME switched to unexpected: \(newIME) (expected: \(expectedIME))", category: .ime)
+                // Refresh UI with actual state
+                self.postUIRefreshNotification()
             }
         }
     }
     
     private func retryIMESwitch(targetIME: String) {
+        retryIMESwitchWithLimit(targetIME: targetIME, retryCount: 1)
+    }
+    
+    private func retryIMESwitchWithLimit(targetIME: String, retryCount: Int) {
+        guard retryCount <= 3 else {
+            Logger.warning("Max retry attempts reached for IME switch", category: .ime)
+            postUIRefreshNotification()
+            return
+        }
+        
         DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
             // Find fresh source directly
-            if let freshSource = self?.findFreshInputSource(targetIME) {
+            if let freshSource = self.findFreshInputSource(targetIME) {
                 let result = TISSelectInputSource(freshSource)
                 if result == noErr {
-                    Logger.info("Retry IME switch successful", category: .ime)
-                    // Success - notify immediately for UI update
-                    self?.postIMESwitchNotification(targetIME, isRetry: true)
-                    self?.setLastSwitchedIME(targetIME)
+                    Logger.info("Retry IME switch successful (attempt \(retryCount))", category: .ime)
+                    // Verify after a short delay instead of recursive call
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                        let actualIME = self.getCurrentInputSource()
+                        if actualIME == targetIME {
+                            self.postIMESwitchNotification(targetIME)
+                        } else {
+                            self.postUIRefreshNotification()
+                        }
+                    }
+                    self.setLastSwitchedIME(targetIME)
                 } else {
                     Logger.error("Retry IME switch failed with code: \(result)", category: .ime)
                     // Notify UI to refresh based on actual state
-                    self?.postUIRefreshNotification()
+                    self.postUIRefreshNotification()
                 }
+            } else {
+                Logger.error("Could not find input source for retry: \(targetIME)", category: .ime)
+                self.postUIRefreshNotification()
             }
         }
     }
@@ -446,7 +504,7 @@ final class ImeController: ErrorHandler, IMEControlling {
     }
     
     private func setLastSwitchedIME(_ imeId: String) {
-        lastSwitchedIMEQueue.async { [weak self] in
+        lastSwitchedIMEQueue.sync { [weak self] in
             self?.lastSwitchedIME = imeId
         }
     }
@@ -457,10 +515,27 @@ final class ImeController: ErrorHandler, IMEControlling {
     
     // MARK: - Thread-safe Notification Helpers
     
+    // Track last notified IME to prevent duplicates
+    private var lastNotifiedIME: String = ""
+    private let notificationQueue = DispatchQueue(label: "com.modswitchime.notification")
+    
     private func postIMESwitchNotification(_ imeId: String, isRetry: Bool = false) {
-        // Prevent duplicate notifications from retry
-        guard !isRetry || getCurrentInputSource() == imeId else {
-            Logger.debug("Skipping duplicate notification for retry", category: .ime)
+        // Prevent duplicate notifications
+        var shouldNotify = false
+        let currentIME = isRetry ? getCurrentInputSource() : "" // Get current IME outside of sync block
+        
+        notificationQueue.sync {
+            if lastNotifiedIME != imeId {
+                lastNotifiedIME = imeId
+                shouldNotify = true
+            } else if isRetry && currentIME == imeId {
+                // Allow retry notification if actually switched
+                shouldNotify = true
+            }
+        }
+        
+        guard shouldNotify else {
+            Logger.debug("Skipping duplicate notification for: \(imeId)", category: .ime)
             return
         }
         
