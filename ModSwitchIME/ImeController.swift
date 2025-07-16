@@ -32,11 +32,7 @@ final class ImeController: ErrorHandler, IMEControlling {
     private var lastSwitchedIME: String?
     private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME")
     
-    // Throttling for IME switch requests
-    private var lastSwitchTime: CFAbsoluteTime = 0
-    private var lastSwitchIME: String?
-    private let throttleInterval: TimeInterval = 0.05 // 50ms
-    private let throttleQueue = DispatchQueue(label: "com.modswitchime.throttle")
+    // Removed throttling - redundant with getCurrentInputSource() check
     
     private init() {
         // Initialize cache on startup for immediate availability
@@ -135,37 +131,14 @@ final class ImeController: ErrorHandler, IMEControlling {
             return
         }
         
-        let now = CFAbsoluteTimeGetCurrent()
-        
-        // Thread-safe throttling check
-        var shouldSwitch = false
-        throttleQueue.sync {
-            // Check if enough time has passed since last switch
-            let timeSinceLastSwitch = now - lastSwitchTime
-            
-            // Skip only if we're trying to switch too soon
-            // Remove the check for lastSwitchIME == imeId since we already checked actual IME above
-            if lastSwitchTime > 0 && timeSinceLastSwitch < throttleInterval {
-                Logger.debug("Throttling IME switch request (too soon): \(imeId)", category: .ime)
-                return
-            }
-            
-            // Update throttle state
-            lastSwitchTime = now
-            lastSwitchIME = imeId
-            shouldSwitch = true
-        }
-        
-        // Execute immediately if throttle check passed
-        if shouldSwitch {
-            do {
-                try selectInputSource(imeId)
-            } catch {
-                let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
-                handleError(imeError)
-                // Notify UI to refresh based on actual state
-                postUIRefreshNotification()
-            }
+        // Execute immediately - no throttling needed since we already checked current IME
+        do {
+            try selectInputSource(imeId)
+        } catch {
+            let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
+            handleError(imeError)
+            // Notify UI to refresh based on actual state
+            postUIRefreshNotification()
         }
     }
     
