@@ -604,7 +604,7 @@ final class KeyMonitor {
     }
     
     private func verifyEventTapEnabled() -> Bool {
-        guard let eventTap = eventTap else { return false }
+        guard eventTap != nil else { return false }
         // Check if event tap is enabled by querying its state
         // CGEventTapIsEnabled is not directly available in Swift, so we check indirectly
         // by verifying the eventTap is still valid and monitoring is active
