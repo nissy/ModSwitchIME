@@ -72,120 +72,114 @@ struct PreferencesView: View {
     @State private var showIdleIMEPicker = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    
-                    // Idle timeout settings
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Auto Switch on Idle")
-                        .font(.headline)
-                    
-                    Toggle("Switch IME automatically when idle", isOn: $preferences.idleOffEnabled)
-                    
-                    if preferences.idleOffEnabled {
-                        HStack {
-                            Text("After idle for:")
-                            Stepper(value: $preferences.idleTimeout, in: 1...300, step: 1) {
-                                Text("\(Int(preferences.idleTimeout)) seconds")
-                            }
-                            .frame(width: 150)
+        VStack(alignment: .leading, spacing: 20) {
+            // Idle timeout settings
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Auto Switch on Idle")
+                    .font(.headline)
+                
+                Toggle("Switch IME automatically when idle", isOn: $preferences.idleOffEnabled)
+                
+                if preferences.idleOffEnabled {
+                    HStack {
+                        Text("After idle for:")
+                        Stepper(value: $preferences.idleTimeout, in: 1...300, step: 1) {
+                            Text("\(Int(preferences.idleTimeout)) seconds")
                         }
-                        
-                        // Return IME selection (only enabled when multiple keys are configured)
-                        HStack {
-                            Text("Return to:")
-                            Button(action: {
-                                showIdleIMEPicker = true
-                            }, label: {
-                                HStack {
-                                    if let imeId = preferences.idleReturnIME {
-                                        if let icon = Preferences.getInputSourceIcon(imeId) {
-                                            Text(icon)
-                                        }
-                                        Text(getIMEDisplayName(imeId))
-                                            .foregroundColor(.primary)
-                                    } else {
-                                        Text("English (Default)")
-                                            .foregroundColor(.secondary)
+                        .frame(width: 150)
+                    }
+                    
+                    // Return IME selection (only enabled when multiple keys are configured)
+                    HStack {
+                        Text("Return to:")
+                        Button(action: {
+                            showIdleIMEPicker = true
+                        }, label: {
+                            HStack {
+                                if let imeId = preferences.idleReturnIME {
+                                    if let icon = Preferences.getInputSourceIcon(imeId) {
+                                        Text(icon)
                                     }
-                                    Spacer()
-                                    Image(systemName: "chevron.down")
+                                    Text(getIMEDisplayName(imeId))
+                                        .foregroundColor(.primary)
+                                } else {
+                                    Text("English (Default)")
                                         .foregroundColor(.secondary)
-                                        .font(.caption)
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .cornerRadius(6)
-                            })
-                            .buttonStyle(.plain)
-                            .frame(maxWidth: 300)
-                        }
-                    }
-                }
-                
-                Divider()
-                
-                // Command key timeout settings
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Modifier Key Detection")
-                        .font(.headline)
-                    
-                    Toggle(
-                        "Wait before switching (prevent accidental triggers)",
-                        isOn: $preferences.cmdKeyTimeoutEnabled
-                    )
-                    
-                    if preferences.cmdKeyTimeoutEnabled {
-                        HStack {
-                            Text("Hold time:")
-                            Stepper(value: $preferences.cmdKeyTimeout, in: 0.1...1.0, step: 0.1) {
-                                Text(String(format: "%.1f seconds", preferences.cmdKeyTimeout))
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
                             }
-                            .frame(width: 150)
-                        }
-                        .padding(.leading, 20)
-                        
-                        Text("Only switch if key is released within this time")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 20)
-                    } else {
-                        Text("Keys switch immediately when released (may conflict with shortcuts)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 20)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(6)
+                        })
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: 300)
                     }
                 }
+            }
+            
+            Divider()
+            
+            // Command key timeout settings
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Modifier Key Detection")
+                    .font(.headline)
                 
-                Divider()
+                Toggle(
+                    "Wait before switching (prevent accidental triggers)",
+                    isOn: $preferences.cmdKeyTimeoutEnabled
+                )
                 
-                // Modifier key mappings
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Modifier Key Assignments")
-                        .font(.headline)
+                if preferences.cmdKeyTimeoutEnabled {
+                    HStack {
+                        Text("Hold time:")
+                        Stepper(value: $preferences.cmdKeyTimeout, in: 0.1...1.0, step: 0.1) {
+                            Text(String(format: "%.1f seconds", preferences.cmdKeyTimeout))
+                        }
+                        .frame(width: 150)
+                    }
+                    .padding(.leading, 20)
                     
-                    Text("Press a modifier key alone to switch input methods")
-                        .font(.caption)
+                    Text("Only switch if key is released within this time")
+                        .font(.caption2)
                         .foregroundColor(.secondary)
-                    
-                    ForEach(ModifierKey.allCases, id: \.self) { key in
-                        ModifierKeyRow(
-                            modifierKey: key,
-                            selectedIME: preferences.modifierKeyMappings[key]
-                        ) {
-                            selectedModifierKey = key
-                        }
+                        .padding(.leading, 20)
+                } else {
+                    Text("Keys switch immediately when released (may conflict with shortcuts)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 20)
+                }
+            }
+            
+            Divider()
+            
+            // Modifier key mappings
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Modifier Key Assignments")
+                    .font(.headline)
+                
+                Text("Press a modifier key alone to switch input methods")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                ForEach(ModifierKey.allCases, id: \.self) { key in
+                    ModifierKeyRow(
+                        modifierKey: key,
+                        selectedIME: preferences.modifierKeyMappings[key]
+                    ) {
+                        selectedModifierKey = key
                     }
                 }
-                
-                    Spacer(minLength: 20)
-                }
-                .padding()
             }
         }
-        .frame(width: 500, height: 650)
+        .padding()
+        .frame(minWidth: 450, idealWidth: 500, maxWidth: 600)
+        .fixedSize(horizontal: false, vertical: true)
         .background(Color(NSColor.windowBackgroundColor))
         .sheet(item: $selectedModifierKey) { key in
             ModifierKeyInputSourcePicker(
