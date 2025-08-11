@@ -17,8 +17,7 @@ ModSwitchIME is a macOS menu bar application that allows you to instantly switch
 ## Features
 
 ### 1. IME Switching with Modifier Keys
-
-<img width="612" src="https://github.com/user-attachments/assets/7b95ff17-bb5b-4242-8c4c-04f57dabfcbe" />
+<img width="562" height="772" src="https://github.com/user-attachments/assets/d662ebb5-35f3-46b8-aa5d-8d210c4dc8d9" />
 
 #### Freely assign any IME to all 8 modifier keys
 
