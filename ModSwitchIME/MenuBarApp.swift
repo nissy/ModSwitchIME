@@ -348,18 +348,19 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     @objc private func showPreferences() {
         // Create settings window directly
         if preferencesWindowController == nil {
+            // Create hosting controller first to get the view
+            let hostingController = NSHostingController(rootView: PreferencesView().environmentObject(preferences))
+            
+            // Create window with automatic sizing
             let preferencesWindow = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
-                styleMask: [.titled, .closable, .miniaturizable],
-                backing: .buffered,
-                defer: false
+                contentViewController: hostingController
             )
-            preferencesWindow.center()
+            preferencesWindow.styleMask = [.titled, .closable, .miniaturizable]
             preferencesWindow.title = "Preferences"
             preferencesWindow.isReleasedWhenClosed = false
             
-            let hostingController = NSHostingController(rootView: PreferencesView().environmentObject(preferences))
-            preferencesWindow.contentViewController = hostingController
+            // Center the window
+            preferencesWindow.center()
             
             preferencesWindowController = NSWindowController(window: preferencesWindow)
         }
