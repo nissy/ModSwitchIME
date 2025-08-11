@@ -18,48 +18,48 @@ final class ImeControllerSkipLogicTests2: XCTestCase {
     // MARK: - Critical Bug Fix Tests
     
     func testRapidDifferentIMESwitchingIsAllowed() {
-        // 異なるIMEへの高速切り替えは許可される（バグ修正確認）
+        // Rapid switching to different IME is allowed (bug fix verification)
         let japaneseIME = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
         let englishIME = "com.apple.keylayout.ABC"
         
-        // 英語→日本語を高速で切り替え
+        // Rapid switch from English to Japanese
         controller.switchToSpecificIME(englishIME, fromUser: true)
-        // 即座に別のIMEへ（100ms以内）
+        // Immediately switch to different IME (within 100ms)
         controller.switchToSpecificIME(japaneseIME, fromUser: true)
         
-        // 両方とも実行されることを期待
+        // Expect both operations to execute
         XCTAssertTrue(true, "Different IME rapid switching should be allowed")
     }
     
     func testSameIMERapidSwitchingIsBlocked() {
-        // 同じIMEへの高速切り替えはブロックされる
+        // Rapid switching to same IME is blocked
         let targetIME = "com.apple.keylayout.ABC"
         
-        // 現在のIMEを記録
+        // Record current IME
         let initialIME = controller.getCurrentInputSource()
         
-        // 同じIMEへ2回高速切り替え
+        // Rapid switch to same IME twice
         controller.switchToSpecificIME(targetIME, fromUser: true)
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 2回目はブロックされる（ログで確認）
+        // Second operation is blocked (verify via logs)
         XCTAssertTrue(true, "Same IME rapid switching should be blocked")
     }
     
     func testInternalOperationNeverBlockedByTiming() {
-        // 内部処理は時間に関係なくスキップ判定のみ
+        // Internal operations only check skip logic regardless of timing
         let targetIME = "com.apple.keylayout.ABC"
         
-        // 内部処理を高速で実行
+        // Execute internal operations rapidly
         controller.switchToSpecificIME(targetIME, fromUser: false)
         controller.switchToSpecificIME(targetIME, fromUser: false)
         
-        // タイミングに関係なく、同じIMEならスキップ
+        // Skip if same IME regardless of timing
         XCTAssertTrue(true, "Internal operations should not be affected by timing")
     }
     
     func testForceAsciiDoesNotWaitForCompletion() {
-        // forceAsciiは完了を待たずに即座にreturnする
+        // forceAscii returns immediately without waiting for completion
         let startTime = CFAbsoluteTimeGetCurrent()
         
         controller.forceAscii(fromUser: true)
@@ -67,12 +67,12 @@ final class ImeControllerSkipLogicTests2: XCTestCase {
         let endTime = CFAbsoluteTimeGetCurrent()
         let duration = endTime - startTime
         
-        // 非同期なので即座に戻る（100ms未満）
+        // Returns immediately as it's async (less than 100ms)
         XCTAssertLessThan(duration, 0.1, "forceAscii should return immediately")
     }
     
     func testThreadSafetyOfSwitchTime() {
-        // 複数スレッドから同時にswitchToSpecificIMEを呼んでも安全
+        // Safe to call switchToSpecificIME concurrently from multiple threads
         let expectation = self.expectation(description: "Thread safety")
         expectation.expectedFulfillmentCount = 100
         
@@ -92,21 +92,21 @@ final class ImeControllerSkipLogicTests2: XCTestCase {
     }
     
     func testChatteringPreventionTiming() {
-        // チャタリング防止が正確に100msで動作することを確認
+        // Verify chattering prevention works precisely at 100ms
         let targetIME = "com.apple.keylayout.ABC"
         
-        // 1回目
+        // First call
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 90ms待機（まだブロックされるはず）
+        // Wait 90ms (should still be blocked)
         Thread.sleep(forTimeInterval: 0.09)
         controller.switchToSpecificIME(targetIME, fromUser: true)
-        // この呼び出しはブロックされる
+        // This call is blocked
         
-        // さらに20ms待機（合計110ms）
+        // Wait another 20ms (total 110ms)
         Thread.sleep(forTimeInterval: 0.02)
         controller.switchToSpecificIME(targetIME, fromUser: true)
-        // この呼び出しは通る
+        // This call goes through
         
         XCTAssertTrue(true, "Chattering prevention should work with 100ms threshold")
     }

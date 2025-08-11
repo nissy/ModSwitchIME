@@ -7,7 +7,7 @@ final class ImeControllerSkipLogicTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        // テスト用のコントローラーを作成
+        // Create test controller
         controller = ImeController.createForTesting()
     }
     
@@ -16,142 +16,142 @@ final class ImeControllerSkipLogicTests: XCTestCase {
         super.tearDown()
     }
     
-    // MARK: - ユーザー操作のテスト
+    // MARK: - User Operation Tests
     
     func testUserOperationAlwaysExecutesForDifferentIME() {
-        // 異なるIMEへの切り替えは常に実行される
+        // Switching to different IME always executes
         let japaneseIME = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
         let englishIME = "com.apple.keylayout.ABC"
         
-        // 現在のIMEを取得
+        // Get current IME
         let currentIME = controller.getCurrentInputSource()
         let targetIME = (currentIME == japaneseIME) ? englishIME : japaneseIME
         
-        // ユーザー操作として実行
+        // Execute as user operation
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 切り替えが試行されたことを確認（実際の切り替えは非同期なので、ここでは呼び出しのみ確認）
+        // Verify switch was attempted (actual switch is async, so only verify call here)
         XCTAssertTrue(true, "User operation should always execute for different IME")
     }
     
     func testUserOperationExecutesEvenForSameIME() {
-        // 同じIMEへの切り替えもユーザー操作なら実行される（アイコンずれ対策）
+        // Switching to same IME executes for user operation (fixes icon mismatch)
         let currentIME = controller.getCurrentInputSource()
         
-        // 同じIMEへの切り替えを試行
+        // Attempt to switch to same IME
         controller.switchToSpecificIME(currentIME, fromUser: true)
         
-        // エラーが発生しないことを確認
+        // Verify no error occurs
         XCTAssertTrue(true, "User operation should execute even for same IME")
     }
     
     func testRapidUserOperationsAreBlocked() {
-        // 100ms以内の連続操作はブロックされる
+        // Consecutive operations within 100ms are blocked
         let targetIME = "com.apple.keylayout.ABC"
         
-        // 1回目の操作
+        // First operation
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 即座に2回目の操作（100ms以内）
+        // Second operation immediately (within 100ms)
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 2回目がブロックされることを期待（ログで確認）
+        // Expect second operation to be blocked (verify via logs)
         XCTAssertTrue(true, "Rapid operations should be blocked")
     }
     
     func testUserOperationsAfter100msAreAllowed() {
-        // 100ms後の操作は許可される
+        // Operations after 100ms are allowed
         let targetIME = "com.apple.keylayout.ABC"
         
-        // 1回目の操作
+        // First operation
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 100ms待機
+        // Wait 100ms
         Thread.sleep(forTimeInterval: 0.11)
         
-        // 2回目の操作
+        // Second operation
         controller.switchToSpecificIME(targetIME, fromUser: true)
         
-        // 2回目も実行されることを期待
+        // Expect second operation to execute
         XCTAssertTrue(true, "Operations after 100ms should be allowed")
     }
     
-    // MARK: - 内部処理のテスト
+    // MARK: - Internal Processing Tests
     
     func testInternalOperationSkipsForSameIME() {
-        // 内部処理は同じIMEへの切り替えをスキップ
+        // Internal processing skips switching to same IME
         let currentIME = controller.getCurrentInputSource()
         
-        // 内部処理として同じIMEへの切り替えを試行
+        // Attempt to switch to same IME as internal processing
         controller.switchToSpecificIME(currentIME, fromUser: false)
         
-        // スキップされることを期待（ログで確認）
+        // Expect to be skipped (verify via logs)
         XCTAssertTrue(true, "Internal operation should skip for same IME")
     }
     
     func testInternalOperationExecutesForDifferentIME() {
-        // 内部処理でも異なるIMEへの切り替えは実行
+        // Internal processing executes switching to different IME
         let japaneseIME = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
         let englishIME = "com.apple.keylayout.ABC"
         
         let currentIME = controller.getCurrentInputSource()
         let targetIME = (currentIME == japaneseIME) ? englishIME : japaneseIME
         
-        // 内部処理として実行
+        // Execute as internal processing
         controller.switchToSpecificIME(targetIME, fromUser: false)
         
-        // 実行されることを期待
+        // Expect to be executed
         XCTAssertTrue(true, "Internal operation should execute for different IME")
     }
     
-    // MARK: - プロトコル互換性のテスト
+    // MARK: - Protocol Compatibility Tests
     
     func testProtocolCompatibility() {
-        // IMEControllingプロトコルのメソッドが動作することを確認
+        // Verify IMEControlling protocol methods work
         let imeController: IMEControlling = controller
         let targetIME = "com.apple.keylayout.ABC"
         
-        // プロトコルメソッドを呼び出し（デフォルトでfromUser: true）
+        // Call protocol method (defaults to fromUser: true)
         imeController.switchToSpecificIME(targetIME)
         
-        // エラーなく実行されることを確認
+        // Verify executes without error
         XCTAssertTrue(true, "Protocol method should work with default parameter")
     }
     
-    // MARK: - forceAsciiのテスト
+    // MARK: - forceAscii Tests
     
     func testForceAsciiFromUser() {
-        // ユーザー操作としてのforceAscii
+        // forceAscii as user operation
         controller.forceAscii(fromUser: true)
         
-        // 英語IMEに切り替わることを期待
+        // Expect to switch to English IME
         let currentIME = controller.getCurrentInputSource()
         let isEnglish = currentIME.contains("ABC") || currentIME.contains("US")
         
         XCTAssertTrue(isEnglish || true, "Should switch to English IME")
-        // Note: 実際のIME切り替えは非同期なので、ここでは呼び出しのみ確認
+        // Note: Actual IME switch is async, so only verify call here
     }
     
     func testForceAsciiFromInternal() {
-        // 内部処理としてのforceAscii
+        // forceAscii as internal processing
         
-        // まず日本語IMEに切り替えておく（もし可能なら）
+        // First switch to Japanese IME (if possible)
         let japaneseIME = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
         controller.switchToSpecificIME(japaneseIME, fromUser: false)
         
         Thread.sleep(forTimeInterval: 0.1)
         
-        // 内部処理として英語に切り替え
+        // Switch to English as internal processing
         controller.forceAscii(fromUser: false)
         
-        // エラーなく実行されることを確認
+        // Verify executes without error
         XCTAssertTrue(true, "Internal forceAscii should work")
     }
     
-    // MARK: - スレッドセーフティのテスト
+    // MARK: - Thread Safety Tests
     
     func testConcurrentUserOperations() {
-        // 複数スレッドからの同時アクセステスト
+        // Test concurrent access from multiple threads
         let expectation = self.expectation(description: "Concurrent operations")
         expectation.expectedFulfillmentCount = 10
         
@@ -159,7 +159,7 @@ final class ImeControllerSkipLogicTests: XCTestCase {
         
         for i in 0..<10 {
             DispatchQueue.global().async {
-                // ランダムな遅延を入れて並行性を高める
+                // Add random delay to increase concurrency
                 Thread.sleep(forTimeInterval: Double.random(in: 0...0.01))
                 
                 self.controller.switchToSpecificIME(targetIME, fromUser: i % 2 == 0)
@@ -172,16 +172,16 @@ final class ImeControllerSkipLogicTests: XCTestCase {
         }
     }
     
-    // MARK: - エラーハンドリングのテスト
+    // MARK: - Error Handling Tests
     
     func testInvalidIMEHandling() {
-        // 無効なIME IDの処理
+        // Handle invalid IME ID
         let invalidIME = "invalid.ime.id.12345"
         
-        // ユーザー操作として無効なIMEを指定
+        // Specify invalid IME as user operation
         controller.switchToSpecificIME(invalidIME, fromUser: true)
         
-        // エラーハンドラーが呼ばれることを期待（クラッシュしないことを確認）
+        // Expect error handler to be called (verify no crash)
         XCTAssertTrue(true, "Invalid IME should be handled gracefully")
     }
 }
