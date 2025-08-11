@@ -36,92 +36,92 @@ class PreferencesInputSourceTests: XCTestCase {
         // Verify each source has valid properties
         for source in allSources {
             XCTAssertFalse(source.sourceId.isEmpty, "Source ID is empty")
-            XCTAssertFalse(source.localizedName.isEmpty, "ローカライズ名が空です")
+            XCTAssertFalse(source.localizedName.isEmpty, "Localized name is empty")
         }
     }
     
     func testInputSourceIconMapping() {
-        // 日本語 - Kotoeri is detected
+        // Japanese - Kotoeri is detected
         let jaIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.Kotoeri.Japanese")
         XCTAssertEqual(jaIcon, "🇯🇵")
         
-        // 英語 - ABC is detected
+        // English - ABC is detected
         let enIcon = Preferences.getInputSourceIcon("com.apple.keylayout.ABC")
         XCTAssertEqual(enIcon, "🇺🇸")
         
-        // 中国語 - SCIM.ITABC contains "ABC" so it matches US first
+        // Chinese - SCIM.ITABC contains "ABC" so it matches US first
         let cnIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.SCIM.ITABC")
         XCTAssertEqual(cnIcon, "🇺🇸")  // Contains "ABC" which is checked before "SCIM"
         
-        // 中国語 - TCIM is detected correctly
+        // Chinese - TCIM is detected correctly
         let cnIcon2 = Preferences.getInputSourceIcon("com.apple.inputmethod.TCIM.Cangjie")
         XCTAssertEqual(cnIcon2, "🇨🇳")
         
-        // 韓国語 - Korean is detected
+        // Korean - Korean is detected
         let koIcon = Preferences.getInputSourceIcon("com.apple.inputmethod.Korean.2SetKorean")
         XCTAssertEqual(koIcon, "🇰🇷")
         
-        // 不明なソース
+        // Unknown source
         let unknownIcon = Preferences.getInputSourceIcon("unknown.source.id")
         XCTAssertEqual(unknownIcon, "⌨️")
     }
     
     func testInputSourceLanguageDetection() {
-        // 日本語の検出
+        // Japanese detection
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.apple.inputmethod.Kotoeri.Japanese"), "Japanese")
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.google.inputmethod.Japanese.Hiragana"), "Japanese")
         XCTAssertEqual(Preferences.getInputSourceLanguage("ATOK.Japanese"), "Japanese")
         
-        // 中国語の検出
+        // Chinese detection
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.apple.inputmethod.SCIM.ITABC"), "Chinese")
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.apple.inputmethod.TCIM.Cangjie"), "Chinese")
         
-        // 韓国語の検出
+        // Korean detection
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.apple.inputmethod.Korean.2SetKorean"), "Korean")
         
-        // その他
+        // Others
         XCTAssertEqual(Preferences.getInputSourceLanguage("com.apple.keylayout.US"), "English & Others")
         XCTAssertEqual(Preferences.getInputSourceLanguage("unknown.source.id"), "English & Others")
     }
     
     func testInputSourceCategoryClassification() {
-        // キーボードレイアウト
+        // Keyboard layouts
         XCTAssertEqual(Preferences.getInputSourceCategory("com.apple.keylayout.ABC"), "Keyboard Layout")
         XCTAssertEqual(Preferences.getInputSourceCategory("com.apple.keylayout.US"), "Keyboard Layout")
         
-        // 入力メソッド
+        // Input methods
         XCTAssertEqual(Preferences.getInputSourceCategory("com.apple.inputmethod.Kotoeri.Japanese"), "Input Method")
         XCTAssertEqual(Preferences.getInputSourceCategory("ATOK.Japanese"), "Input Method")
         XCTAssertEqual(Preferences.getInputSourceCategory("com.google.inputmethod.Japanese"), "Input Method")
         
-        // その他
+        // Others
         XCTAssertEqual(Preferences.getInputSourceCategory("unknown.source.id"), "Others")
     }
     
     func testInputSourceFiltering() {
         let availableSources = Preferences.getAvailableInputSources()
         
-        // キーボードレイアウトが除外されていることを確認（getAvailableInputSourcesはIMEのみを返す）
+        // Verify keyboard layouts are excluded (getAvailableInputSources returns only IMEs)
         let hasABC = availableSources.contains { $0.id.hasPrefix("com.apple.keylayout.") }
-        XCTAssertFalse(hasABC, "キーボードレイアウトは除外されるべきです")
+        XCTAssertFalse(hasABC, "Keyboard layouts should be excluded")
         
-        // 代わりに、getAllInputSourcesでキーボードレイアウトが含まれることを確認
+        // Instead, verify getAllInputSources includes keyboard layouts
         let allSources = Preferences.getAllInputSources()
         let hasABCInAll = allSources.contains { $0.sourceId == "com.apple.keylayout.ABC" }
-        // これはシステムによって異なる可能性があります
+        // This may vary by system
         
-        // IMEが含まれることを確認
+        // Verify IMEs are included
         let hasIME = availableSources.contains { 
             $0.id.contains("inputmethod") || $0.id.contains("ATOK") || $0.id.contains("atok") 
         }
-        // IMEがインストールされていない可能性もあるため、警告のみ
+        // IMEs might not be installed, so only warn
         if !hasIME {
             // Warning: No IME found in available sources
         }
         
-        // getAvailableInputSourcesはABCキーボードレイアウトを除外する
+        // getAvailableInputSources excludes ABC keyboard layout
         let filteredSources = Preferences.getAvailableInputSources()
         let hasABCInFiltered = filteredSources.contains { $0.id == "com.apple.keylayout.ABC" }
-        XCTAssertFalse(hasABCInFiltered, "ABCキーボードレイアウトは除外されるべきです")
+        XCTAssertFalse(hasABCInFiltered, "ABC keyboard layout should be excluded")
     }
 }

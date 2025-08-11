@@ -136,6 +136,7 @@ struct InputSourceManager {
         return includeDisabled ? Cache.allSources : Cache.enabledSources
     }
     
+    // swiftlint:disable:next function_body_length
     private static func fetchInputSources(includeDisabled: Bool) -> [Preferences.InputSource] {
         var sources: [Preferences.InputSource] = []
         

@@ -1,9 +1,8 @@
+// swiftlint:disable file_length
 import SwiftUI
 import Cocoa
 import ApplicationServices
 import ServiceManagement
-
-// swiftlint:disable type_body_length
 
 // MARK: - Notification Names
 extension NSNotification.Name {
@@ -11,6 +10,7 @@ extension NSNotification.Name {
     static let screenIsUnlocked = NSNotification.Name("com.apple.screenIsUnlocked")
 }
 
+// swiftlint:disable:next type_body_length
 final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var statusBarItem: NSStatusItem?
     let preferences = Preferences.shared
@@ -154,7 +154,7 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             
             // Restore after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                guard let _ = self else { return }
+                guard self != nil else { return }
                 button.image = originalImage
                 button.title = originalTitle
             }
@@ -767,7 +767,10 @@ extension MenuBarApp {
         guard let button = statusBarItem?.button else { return }
         
         // Determine icon based on IME type
-        let (iconName, fallbackText, tooltip) = getIconForIME(imeId)
+        let iconInfo = getIconForIME(imeId)
+        let iconName = iconInfo.systemName
+        let fallbackText = iconInfo.emoji
+        let tooltip = iconInfo.title
         
         // Update icon
         if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: tooltip) {
@@ -786,20 +789,26 @@ extension MenuBarApp {
         Logger.debug("Updated icon for IME: \(imeId) -> \(iconName)", category: .main)
     }
     
-    private func getIconForIME(_ imeId: String) -> (String, String, String) {
+    private struct IconInfo {
+        let systemName: String
+        let emoji: String
+        let title: String
+    }
+    
+    private func getIconForIME(_ imeId: String) -> IconInfo {
         // Determine icon based on IME ID
         if imeId.contains("ABC") || imeId.contains("US") {
-            return ("globe", "🌐", "ModSwitchIME - English (\(imeId))")
+            return IconInfo(systemName: "globe", emoji: "🌐", title: "ModSwitchIME - English (\(imeId))")
         } else if imeId.contains("Japanese") || imeId.contains("Hiragana") {
-            return ("globe.asia.australia", "🇯🇵", "ModSwitchIME - Japanese (\(imeId))")
+            return IconInfo(systemName: "globe.asia.australia", emoji: "🇯🇵", title: "ModSwitchIME - Japanese (\(imeId))")
         } else if imeId.contains("Korean") {
-            return ("globe.asia.australia", "🇰🇷", "ModSwitchIME - Korean (\(imeId))")
+            return IconInfo(systemName: "globe.asia.australia", emoji: "🇰🇷", title: "ModSwitchIME - Korean (\(imeId))")
         } else if imeId.contains("Chinese") || imeId.contains("Pinyin") || 
                   imeId.contains("Simplified") || imeId.contains("Traditional") {
-            return ("globe.asia.australia", "🇨🇳", "ModSwitchIME - Chinese (\(imeId))")
+            return IconInfo(systemName: "globe.asia.australia", emoji: "🇨🇳", title: "ModSwitchIME - Chinese (\(imeId))")
         } else {
             // Generic non-English IME
-            return ("globe.central.south.asia", "🌏", "ModSwitchIME - IME (\(imeId))")
+            return IconInfo(systemName: "globe.central.south.asia", emoji: "🌏", title: "ModSwitchIME - IME (\(imeId))")
         }
     }
 }

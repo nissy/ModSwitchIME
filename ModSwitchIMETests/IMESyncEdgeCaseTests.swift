@@ -147,9 +147,11 @@ final class IMESyncEdgeCaseTests: XCTestCase {
         }
         
         // When: Switching with proper delays to avoid throttling
-        let imes = [("com.apple.keylayout.ABC", "com.apple.keylayout.US"),
-                    ("com.apple.keylayout.Japanese", "com.apple.keylayout.ABC"),
-                    ("com.apple.keylayout.US", "com.apple.keylayout.Japanese")]
+        let imes = [
+            ("com.apple.keylayout.ABC", "com.apple.keylayout.US"),
+            ("com.apple.keylayout.Japanese", "com.apple.keylayout.ABC"),
+            ("com.apple.keylayout.US", "com.apple.keylayout.Japanese")
+        ]
         
         for (index, (targetIME, currentIME)) in imes.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.1) {

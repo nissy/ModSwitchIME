@@ -456,7 +456,7 @@ class PreferencesLogicTests: XCTestCase {
         // This test simulates the bug where empty array [] was saved instead of empty dictionary {}
         
         // Given: Empty array data in UserDefaults (simulating the bug)
-        let emptyArrayData = "[]".data(using: .utf8)!
+        let emptyArrayData = Data("[]".utf8)
         UserDefaults.standard.set(emptyArrayData, forKey: "modifierKeyMappings")
         UserDefaults.standard.set(emptyArrayData, forKey: "modifierKeyEnabled")
         

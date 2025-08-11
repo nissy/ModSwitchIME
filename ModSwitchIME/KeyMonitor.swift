@@ -3,6 +3,7 @@ import CoreGraphics
 import Carbon
 import Combine
 
+// swiftlint:disable:next type_body_length
 final class KeyMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -151,6 +152,7 @@ final class KeyMonitor {
         Logger.info("KeyMonitor stopped", category: .keyboard)
     }
     
+    // swiftlint:disable:next function_body_length
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Record activity
         lastActivityTime = CFAbsoluteTimeGetCurrent()
@@ -184,7 +186,10 @@ final class KeyMonitor {
                     guard let self = self else { return }
                     // If still not monitoring, recreate
                     if !self.isMonitoring {
-                        Logger.error("Failed to re-enable event tap after timeout, attempting recreation", category: .keyboard)
+                        Logger.error(
+                            "Failed to re-enable event tap after timeout, attempting recreation",
+                            category: .keyboard
+                        )
                         self.recreateEventTap()
                     }
                 }
@@ -201,7 +206,10 @@ final class KeyMonitor {
                         guard let self = self else { return }
                         // If still not monitoring, recreate
                         if !self.isMonitoring {
-                            Logger.error("Failed to re-enable event tap after user input, attempting recreation", category: .keyboard)
+                            Logger.error(
+                                "Failed to re-enable event tap after user input, attempting recreation",
+                                category: .keyboard
+                            )
                             self.recreateEventTap()
                         }
                     }
@@ -215,6 +223,7 @@ final class KeyMonitor {
         return Unmanaged.passUnretained(event)
     }
     
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func handleFlagsChanged(event: CGEvent) {
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
@@ -309,7 +318,10 @@ final class KeyMonitor {
                 // In multi-key scenario, always switch to the last pressed key's IME
                 // (Even if it's the same key being pressed again)
                 if let targetIME = preferences.getIME(for: modifierKey) {
-                    Logger.debug("Multi-key IME switch: \(modifierKey.displayName) -> \(targetIME)", category: .keyboard)
+                    Logger.debug(
+                        "Multi-key IME switch: \(modifierKey.displayName) -> \(targetIME)",
+                        category: .keyboard
+                    )
                     imeController.switchToSpecificIME(targetIME)
                 }
             } else {
@@ -357,7 +369,10 @@ final class KeyMonitor {
         
         // Check if we have a valid state
         guard let state = keyState else {
-            Logger.warning("Key release without corresponding press: \(modifierKey.displayName)", category: .keyboard)
+            Logger.warning(
+                "Key release without corresponding press: \(modifierKey.displayName)",
+                category: .keyboard
+            )
             return
         }
         
@@ -366,7 +381,10 @@ final class KeyMonitor {
         
         if !otherKeysPressed && !state.isInMultiKeyPress && !state.hadNonModifierPress {
             // Single key press - switch on release
-            Logger.debug("Single key IME switch on release: \(modifierKey.displayName) -> \(targetIME)", category: .keyboard)
+            Logger.debug(
+                "Single key IME switch on release: \(modifierKey.displayName) -> \(targetIME)",
+                category: .keyboard
+            )
             
             // Direct switch without checking current IME for better performance
             imeController.switchToSpecificIME(targetIME)
@@ -383,7 +401,10 @@ final class KeyMonitor {
         
         let interval = calculateOptimalTimerInterval()
         
-        Logger.debug("Starting idle timer with interval: \(interval)s, timeout: \(preferences.idleTimeout)s", category: .keyboard)
+        Logger.debug(
+            "Starting idle timer with interval: \(interval)s, timeout: \(preferences.idleTimeout)s",
+            category: .keyboard
+        )
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -428,10 +449,16 @@ final class KeyMonitor {
         
         if idleTime >= preferences.idleTimeout {
             if let idleIME = preferences.idleReturnIME {
-                Logger.debug("Idle timeout reached (\(idleTime)s), switching to configured IME: \(idleIME)", category: .keyboard)
+                Logger.debug(
+                    "Idle timeout reached (\(idleTime)s), switching to configured IME: \(idleIME)",
+                    category: .keyboard
+                )
                 imeController.switchToSpecificIME(idleIME)
             } else {
-                Logger.debug("Idle timeout reached (\(idleTime)s), switching to English", category: .keyboard)
+                Logger.debug(
+                    "Idle timeout reached (\(idleTime)s), switching to English",
+                    category: .keyboard
+                )
                 imeController.forceAscii()
             }
             lastActivityTime = currentTime
@@ -476,7 +503,10 @@ final class KeyMonitor {
     // MARK: - Event Tap Health Monitoring
     
     private func startEventTapHealthMonitoring() {
-        eventTapHealthTimer = Timer.scheduledTimer(withTimeInterval: eventTapHealthCheckInterval, repeats: true) { [weak self] _ in
+        eventTapHealthTimer = Timer.scheduledTimer(
+            withTimeInterval: eventTapHealthCheckInterval,
+            repeats: true
+        ) { [weak self] _ in
             self?.checkEventTapHealth()
         }
     }
@@ -491,7 +521,10 @@ final class KeyMonitor {
         
         // If no events for threshold time and we're supposed to be monitoring
         if timeSinceLastEvent > eventTapInactivityThreshold && isRunning {
-            Logger.warning("No events received for \(Int(timeSinceLastEvent))s, checking event tap health", category: .keyboard)
+            Logger.warning(
+                "No events received for \(Int(timeSinceLastEvent))s, checking event tap health",
+                category: .keyboard
+            )
             
             // Test if event tap is still active
             if let eventTap = eventTap {

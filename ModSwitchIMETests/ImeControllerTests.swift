@@ -407,7 +407,10 @@ class ImeControllerTests: XCTestCase {
         
         // Next request to different IME should execute
         mockableController.switchToSpecificIME(differentIME)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Request to different IME after throttle interval should execute")
+        XCTAssertEqual(
+            mockTISSelectInputSourceCallCount, 2,
+            "Request to different IME after throttle interval should execute"
+        )
     }
     
     func testIMESwitchDifferentIMEsWithinThrottleWindow() {
