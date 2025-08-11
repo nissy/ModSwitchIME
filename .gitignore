@@ -16,6 +16,7 @@ DerivedData/
 # Generated files
 ModSwitchIME/Info.plist
 ExportOptions.plist
+ExportOptions-DeveloperID.plist
 
 # Environment files
 .envrc
