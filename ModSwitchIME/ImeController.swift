@@ -32,6 +32,10 @@ final class ImeController: ErrorHandler, IMEControlling {
     private var lastSwitchedIME: String?
     private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME")
     
+    // Track last switch time for chattering prevention
+    private var lastSwitchTime: CFAbsoluteTime = 0
+    private let switchTimeQueue = DispatchQueue(label: "com.modswitchime.switchtime", attributes: .concurrent)
+    
     // Removed throttling - redundant with getCurrentInputSource() check
     
     private init() {
@@ -48,10 +52,14 @@ final class ImeController: ErrorHandler, IMEControlling {
         if Thread.isMainThread {
             buildCacheSync()
         } else {
-            // Use async dispatch to avoid potential deadlock
+            // For test environments, wait for cache to be built
+            let semaphore = DispatchSemaphore(value: 0)
             DispatchQueue.main.async { [weak self] in
                 self?.buildCacheSync()
+                semaphore.signal()
             }
+            // Wait with timeout to prevent deadlock
+            _ = semaphore.wait(timeout: .now() + 2.0)
         }
     }
     
@@ -94,29 +102,38 @@ final class ImeController: ErrorHandler, IMEControlling {
         }
     }
     
-    private func switchToEnglish() {
+    func forceAscii(fromUser: Bool = true) {
         let englishSources = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"]
         
+        // Try to switch to the first available English source
+        // Don't check immediately as the switch is asynchronous
         for sourceID in englishSources {
-            do {
-                try selectInputSource(sourceID)
-                return
-            } catch {
-                // Try next
+            // Check if this source exists in our cache
+            var sourceExists = false
+            cacheQueue.sync {
+                sourceExists = inputSourceCache[sourceID] != nil
+            }
+            
+            if sourceExists {
+                // Use switchToSpecificIME
+                switchToSpecificIME(sourceID, fromUser: fromUser)
+                return  // Don't check immediately, trust the switch will work
             }
         }
         
+        // If we get here, no English sources are available
         let error = ModSwitchIMEError.inputSourceNotFound("English input source")
         handleError(error)
     }
     
+    // Wrapper for compatibility
     func forceAscii() {
-        switchToEnglish()
+        forceAscii(fromUser: true)
     }
     
     // Removed toggleByCmd - no longer used after architecture changes
     
-    func switchToSpecificIME(_ imeId: String) {
+    func switchToSpecificIME(_ imeId: String, fromUser: Bool = true) {
         // Validate IME ID
         guard isValidIMEId(imeId) else {
             Logger.warning("Invalid IME ID provided: \(imeId)", category: .ime)
@@ -124,22 +141,48 @@ final class ImeController: ErrorHandler, IMEControlling {
             return
         }
         
-        // Check if already on target IME
         let currentIME = getCurrentInputSource()
-        if currentIME == imeId {
-            Logger.debug("Already on target IME: \(imeId), skipping switch", category: .ime)
-            return
+        let now = CFAbsoluteTimeGetCurrent()
+        
+        if fromUser {
+            // User operation
+            // Prevent rapid switching for same IME only (chattering prevention)
+            let lastTime = switchTimeQueue.sync { lastSwitchTime }
+            if currentIME == imeId && (now - lastTime) < 0.1 {
+                Logger.debug("Skipping rapid duplicate switch (chattering prevention)", category: .ime)
+                return
+            }
+            // User operations always execute (fixes icon mismatch issue)
+            // Even for same IME to fix icon/actual mismatch
+        } else {
+            // Internal operation
+            // Skip if already on target IME (performance optimization)
+            if currentIME == imeId {
+                Logger.debug("Already on target IME (internal): \(imeId)", category: .ime)
+                return
+            }
         }
         
-        // Execute immediately - no throttling needed since we already checked current IME
+        // Record switch time synchronously to ensure consistency
+        // Using barrier for exclusive write access
+        switchTimeQueue.sync(flags: .barrier) {
+            self.lastSwitchTime = now
+        }
+        
+        // Execute IME switch
         do {
             try selectInputSource(imeId)
         } catch {
             let imeError = ModSwitchIMEError.inputSourceNotFound(imeId)
             handleError(imeError)
-            // Notify UI to refresh based on actual state
+            // Refresh UI to show actual state on error
             postUIRefreshNotification()
         }
+    }
+    
+    // Wrapper method for protocol compatibility
+    func switchToSpecificIME(_ imeId: String) {
+        switchToSpecificIME(imeId, fromUser: true)
     }
     
     private func isValidIMEId(_ imeId: String) -> Bool {
@@ -317,7 +360,7 @@ final class ImeController: ErrorHandler, IMEControlling {
                 Logger.warning("IME switch may have failed: still at \(currentIME)", category: .ime)
                 // Retry with incremented count
                 if retryCount < 3 {
-                    self.retryIMESwitchWithLimit(targetIME: expectedIME, retryCount: retryCount + 1)
+                    self.retryIMESwitchWithLimit(targetIME: expectedIME, retryCount: retryCount + 1, fromUser: false)
                 } else {
                     self.postUIRefreshNotification()
                 }
@@ -330,10 +373,10 @@ final class ImeController: ErrorHandler, IMEControlling {
     }
     
     private func retryIMESwitch(targetIME: String) {
-        retryIMESwitchWithLimit(targetIME: targetIME, retryCount: 1)
+        retryIMESwitchWithLimit(targetIME: targetIME, retryCount: 1, fromUser: false)
     }
     
-    private func retryIMESwitchWithLimit(targetIME: String, retryCount: Int) {
+    private func retryIMESwitchWithLimit(targetIME: String, retryCount: Int, fromUser: Bool = false) {
         guard retryCount <= 3 else {
             Logger.warning("Max retry attempts reached for IME switch", category: .ime)
             postUIRefreshNotification()
@@ -343,30 +386,8 @@ final class ImeController: ErrorHandler, IMEControlling {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            // Find fresh source directly
-            if let freshSource = self.findFreshInputSource(targetIME) {
-                let result = TISSelectInputSource(freshSource)
-                if result == noErr {
-                    Logger.info("Retry IME switch successful (attempt \(retryCount))", category: .ime)
-                    // Verify after a short delay instead of recursive call
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                        let actualIME = self.getCurrentInputSource()
-                        if actualIME == targetIME {
-                            self.postIMESwitchNotification(targetIME)
-                        } else {
-                            self.postUIRefreshNotification()
-                        }
-                    }
-                    self.setLastSwitchedIME(targetIME)
-                } else {
-                    Logger.error("Retry IME switch failed with code: \(result)", category: .ime)
-                    // Notify UI to refresh based on actual state
-                    self.postUIRefreshNotification()
-                }
-            } else {
-                Logger.error("Could not find input source for retry: \(targetIME)", category: .ime)
-                self.postUIRefreshNotification()
-            }
+            // Use switchToSpecificIME with fromUser parameter for retry
+            self.switchToSpecificIME(targetIME, fromUser: fromUser)
         }
     }
     
