@@ -10,6 +10,7 @@ protocol IMEControlling {
     func forceAscii()
 }
 
+// swiftlint:disable:next type_body_length
 final class ImeController: ErrorHandler, IMEControlling {
     // Singleton instance
     static let shared = ImeController()
@@ -193,7 +194,9 @@ final class ImeController: ErrorHandler, IMEControlling {
         guard imeId.count < 200 else { return false }
         
         // Check for valid characters (alphanumeric, dots, hyphens, underscores)
-        let validCharacterSet = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")
+        let validCharacterSet = CharacterSet(
+            charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_"
+        )
         let imeCharacterSet = CharacterSet(charactersIn: imeId)
         guard imeCharacterSet.isSubset(of: validCharacterSet) else { return false }
         
@@ -241,7 +244,9 @@ final class ImeController: ErrorHandler, IMEControlling {
                 }
                 
                 // Failed - wait before retry with exponential backoff
-                lastError = ModSwitchIMEError.inputMethodSwitchFailed("TISSelectInputSource failed with code: \(result)")
+                lastError = ModSwitchIMEError.inputMethodSwitchFailed(
+                    "TISSelectInputSource failed with code: \(result)"
+                )
                 Logger.warning("IME switch attempt \(attempt + 1) failed with code: \(result)", category: .ime)
                 
                 if attempt < 2 {
@@ -323,7 +328,10 @@ final class ImeController: ErrorHandler, IMEControlling {
             
             let actualIME = self.getCurrentInputSource()
             if actualIME != expectedIME {
-                Logger.warning("Additional verification: IME mismatch detected (expected: \(expectedIME), actual: \(actualIME))", category: .ime)
+                Logger.warning(
+                    "Additional verification: IME mismatch detected (expected: \(expectedIME), actual: \(actualIME))",
+                    category: .ime
+                )
                 // Correct the UI state
                 self.postUIRefreshNotification()
             }
@@ -494,7 +502,9 @@ final class ImeController: ErrorHandler, IMEControlling {
     }
     
     @objc private func applicationDidActivate(_ notification: Notification) {
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+            return
+        }
         
         let appName = app.localizedName ?? "Unknown"
         Logger.debug("Application activated: \(appName)", category: .ime)
@@ -512,7 +522,10 @@ final class ImeController: ErrorHandler, IMEControlling {
         let expectedIME = lastSwitchedIMEQueue.sync { lastSwitchedIME }
         
         if let expected = expectedIME, actualIME != expected {
-            Logger.warning("IME state mismatch after app switch: expected=\(expected), actual=\(actualIME)", category: .ime)
+            Logger.warning(
+                "IME state mismatch after app switch: expected=\(expected), actual=\(actualIME)",
+                category: .ime
+            )
             
             // Optionally refresh cache to ensure accuracy
             refreshInputSourceCache()

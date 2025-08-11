@@ -17,7 +17,8 @@ struct PrivacyNoticeView: View {
                 PrivacyPoint(
                     icon: "⌨️",
                     title: "Key Detection Only",
-                    description: "Detects key presses to distinguish shortcuts from single modifier keys. No text content captured."
+                    description: """Detects key presses to distinguish shortcuts from single modifier keys. 
+No text content captured."""
                 )
                 
                 PrivacyPoint(

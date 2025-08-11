@@ -33,6 +33,7 @@ class UserScenarioTest: XCTestCase {
         super.tearDown()
     }
     
+    // swiftlint:disable:next function_body_length
     func testUserSpecificSequence() {
         #if DEBUG
         // User's specific sequence:
@@ -50,7 +51,10 @@ class UserScenarioTest: XCTestCase {
             flags: ModifierKey.leftCommand.flagMask
         )
         
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 0, "First key press should not trigger IME switch")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.count, 0,
+            "First key press should not trigger IME switch"
+        )
         
         // Step 2: Press right CMD (should switch)
         // Step 2: Press right CMD while left CMD is held (should switch to ATOK)
@@ -84,8 +88,11 @@ class UserScenarioTest: XCTestCase {
         // Verify the switch happened
         
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 2)
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls[1].ime, "com.apple.keylayout.ABC", 
-                      "Should switch to left CMD's IME")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls[1].ime,
+            "com.apple.keylayout.ABC",
+            "Should switch to left CMD's IME"
+        )
         
         // Step 5: Release right CMD (should NOT switch)
         // Step 5: Release right CMD (should NOT switch)
@@ -104,8 +111,11 @@ class UserScenarioTest: XCTestCase {
         )
         
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 3)
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls[2].ime, "com.justsystems.inputmethod.atok34.Japanese", 
-                      "Should switch to right CMD's IME")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls[2].ime,
+            "com.justsystems.inputmethod.atok34.Japanese",
+            "Should switch to right CMD's IME"
+        )
         
         // Verify final state
         XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, 3, "Should have exactly 3 IME switches")

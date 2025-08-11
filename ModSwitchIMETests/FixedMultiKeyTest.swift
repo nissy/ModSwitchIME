@@ -33,6 +33,7 @@ class FixedMultiKeyTest: XCTestCase {
         super.tearDown()
     }
     
+    // swiftlint:disable:next function_body_length
     func testUserReportedProblemIsFixed() {
         #if DEBUG
         // Test the exact sequence user reported:
@@ -55,11 +56,16 @@ class FixedMultiKeyTest: XCTestCase {
             flags: [ModifierKey.leftCommand.flagMask, ModifierKey.rightCommand.flagMask]
         )
         
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, initialCalls + 1, 
-                      "Should switch to ATOK on right CMD press")
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.last?.ime, 
-                      "com.justsystems.inputmethod.atok34.Japanese",
-                      "Should switch to ATOK")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.count,
+            initialCalls + 1,
+            "Should switch to ATOK on right CMD press"
+        )
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.last?.ime,
+            "com.justsystems.inputmethod.atok34.Japanese",
+            "Should switch to ATOK"
+        )
         
         // Step 3: Release right CMD
         // 3. Release right CMD
@@ -69,8 +75,11 @@ class FixedMultiKeyTest: XCTestCase {
         )
         
         // Should NOT switch (was involved in multi-key press)
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, initialCalls + 1,
-                      "Should NOT switch on right CMD release")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.count,
+            initialCalls + 1,
+            "Should NOT switch on right CMD release"
+        )
         
         // Step 4: Release left CMD
         // 4. Release left CMD
@@ -80,8 +89,11 @@ class FixedMultiKeyTest: XCTestCase {
         )
         
         // Should NOT switch (was involved in multi-key press)
-        XCTAssertEqual(mockImeController.switchToSpecificIMECalls.count, initialCalls + 1,
-                      "Should NOT switch on left CMD release")
+        XCTAssertEqual(
+            mockImeController.switchToSpecificIMECalls.count,
+            initialCalls + 1,
+            "Should NOT switch on left CMD release"
+        )
         
         // Step 5: Press right CMD  
         // 5. Press right CMD
