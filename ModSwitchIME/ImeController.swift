@@ -151,24 +151,13 @@ final class ImeController: ErrorHandler, IMEControlling {
             let lastTime = switchTimeQueue.sync { lastSwitchTime }
             if currentIME == imeId && (now - lastTime) < 0.1 {
                 Logger.debug("Skipping rapid duplicate switch (chattering prevention)", category: .ime)
+                // Ensure UI reflects the current state even when we skip
+                postUIRefreshNotification()
                 return
             }
-            // User operations always execute (fixes icon mismatch issue)
-            // Even for same IME to fix icon/actual mismatch
-
-            // If user explicitly requests the same IME as current, force a state refresh by
-            // temporarily switching to a safe alternate IME and then back to the target.
-            if currentIME == imeId {
-                let lastTime = switchTimeQueue.sync { lastSwitchTime }
-                if (now - lastTime) > 0.2, let fallback = chooseAlternateIME(for: imeId) {
-                    do {
-                        try selectInputSource(fallback)
-                        Thread.sleep(forTimeInterval: 0.03)
-                    } catch {
-                        Logger.warning("Fallback reselect failed: \(error)", category: .ime)
-                    }
-                }
-            }
+            // No alternate/fallback selection: selecting a different IME temporarily
+            // caused unintended final states in rapid sequences. We only re-select
+            // the requested IME (even if it matches current) and refresh UI.
         } else {
             // Internal operation
             // Skip if already on target IME (performance optimization)
