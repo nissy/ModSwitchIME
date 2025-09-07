@@ -4,11 +4,10 @@ import Carbon
 
 class InputSourceDebugTests: XCTestCase {
     
-    func testDebugAllInputSources() {
+    func testDebugAllInputSources() throws {
         // Get all input sources
         guard let inputSourceList = TISCreateInputSourceList(nil, false).takeRetainedValue() as? [TISInputSource] else {
-            XCTFail("Failed to get input source list")
-            return
+            throw XCTSkip("TISCreateInputSourceList unavailable in this environment")
         }
         
         // === All input sources list ===
@@ -85,11 +84,10 @@ class InputSourceDebugTests: XCTestCase {
         }
     }
     
-    func testDebugSelectableInputMethods() {
+    func testDebugSelectableInputMethods() throws {
         // Test with the same logic as Preferences.getAvailableInputSources()
         guard let inputSourceList = TISCreateInputSourceList(nil, false).takeRetainedValue() as? [TISInputSource] else {
-            XCTFail("Failed to get input source list")
-            return
+            throw XCTSkip("TISCreateInputSourceList unavailable in this environment")
         }
         
         // === Selectable input methods ===
@@ -114,10 +112,9 @@ class InputSourceDebugTests: XCTestCase {
         // Total count of selectable input sources: \(selectableCount)
     }
     
-    func testDebugInputMethodsOnly() {
+    func testDebugInputMethodsOnly() throws {
         guard let inputSourceList = TISCreateInputSourceList(nil, false).takeRetainedValue() as? [TISInputSource] else {
-            XCTFail("Failed to get input source list")
-            return
+            throw XCTSkip("TISCreateInputSourceList unavailable in this environment")
         }
         
         // === Input methods only (filter by category) ===

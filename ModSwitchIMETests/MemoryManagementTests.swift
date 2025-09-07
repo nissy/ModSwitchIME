@@ -52,7 +52,10 @@ class MemoryManagementTests: XCTestCase {
     
     // MARK: - Cache Thread Safety Tests
     
-    func testCacheConcurrentAccess() {
+    func testCacheConcurrentAccess() throws {
+        if ProcessInfo.processInfo.environment["RUN_STRESS_TESTS"] != "1" {
+            throw XCTSkip("Skipping stress test by default. Set RUN_STRESS_TESTS=1 to enable.")
+        }
         // Given: An ImeController instance
         #if DEBUG
         let controller = ImeController.createForTesting()

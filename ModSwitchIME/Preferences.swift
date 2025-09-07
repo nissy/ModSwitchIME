@@ -46,7 +46,7 @@ struct InputSourceHelper {
             (["ABC", "US"], "🇺🇸"),
             (["japanese", "kotoeri", "ATOK", "atok", "com.google.inputmethod.japanese"], "🇯🇵"),
             (["korean", "hangul"], "🇰🇷"),
-            (["TCIM", "cangjie", "zhuyin", "stroke"], "🇨🇳"),
+            (["TCIM", "cangjie", "zhuyin", "stroke", "shuangpin"], "🇨🇳"),
             (["SCIM", "pinyin", "wubi"], "🇨🇳"),
             (["vietnamese", "telex", "VNI", "VIQR"], "🇻🇳"),
             (["thai"], "🇹🇭"),

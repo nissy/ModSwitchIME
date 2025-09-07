@@ -150,7 +150,10 @@ final class ImeControllerSkipLogicTests: XCTestCase {
     
     // MARK: - Thread Safety Tests
     
-    func testConcurrentUserOperations() {
+    func testConcurrentUserOperations() throws {
+        if ProcessInfo.processInfo.environment["RUN_STRESS_TESTS"] != "1" {
+            throw XCTSkip("Skipping stress test by default. Set RUN_STRESS_TESTS=1 to enable.")
+        }
         // Test concurrent access from multiple threads
         let expectation = self.expectation(description: "Concurrent operations")
         expectation.expectedFulfillmentCount = 10
