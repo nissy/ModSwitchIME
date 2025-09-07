@@ -155,6 +155,20 @@ final class ImeController: ErrorHandler, IMEControlling {
             }
             // User operations always execute (fixes icon mismatch issue)
             // Even for same IME to fix icon/actual mismatch
+
+            // If user explicitly requests the same IME as current, force a state refresh by
+            // temporarily switching to a safe alternate IME and then back to the target.
+            if currentIME == imeId {
+                let lastTime = switchTimeQueue.sync { lastSwitchTime }
+                if (now - lastTime) > 0.2, let fallback = chooseAlternateIME(for: imeId) {
+                    do {
+                        try selectInputSource(fallback)
+                        Thread.sleep(forTimeInterval: 0.03)
+                    } catch {
+                        Logger.warning("Fallback reselect failed: \(error)", category: .ime)
+                    }
+                }
+            }
         } else {
             // Internal operation
             // Skip if already on target IME (performance optimization)
@@ -211,6 +225,21 @@ final class ImeController: ErrorHandler, IMEControlling {
         }
         
         return true
+    }
+
+    // Choose an alternate IME to force a visible state change before selecting the target again.
+    private func chooseAlternateIME(for target: String) -> String? {
+        var cache: [String: TISInputSource] = [:]
+        cacheQueue.sync { cache = inputSourceCache }
+        let english = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"].filter { cache[$0] != nil }
+        if english.isEmpty { return nil }
+        if target == "com.apple.keylayout.ABC" {
+            return english.first(where: { $0 == "com.apple.keylayout.US" }) ?? english.first
+        }
+        if target == "com.apple.keylayout.US" {
+            return english.first(where: { $0 == "com.apple.keylayout.ABC" }) ?? english.first
+        }
+        return english.first
     }
     
     func selectInputSource(_ inputSourceID: String) throws {
@@ -282,7 +311,10 @@ final class ImeController: ErrorHandler, IMEControlling {
                     return
                 }
                 
-                Logger.warning("IME switch with fresh source attempt \(attempt + 1) failed", category: .ime)
+                Logger.warning(
+                    "IME switch with fresh source attempt \(attempt + 1) failed",
+                    category: .ime
+                )
                 if attempt < 2 {
                     Thread.sleep(forTimeInterval: 0.1)
                 }
@@ -315,7 +347,10 @@ final class ImeController: ErrorHandler, IMEControlling {
                 self.verifyIMESwitchWithLimit(expectedIME: expectedIME, currentIME: currentIME, retryCount: 1)
             } else {
                 // Switched to unexpected IME
-                Logger.warning("IME switched to unexpected: \(actualIME) (expected: \(expectedIME))", category: .ime)
+                Logger.warning(
+                    "IME switched to unexpected: \(actualIME) (expected: \(expectedIME))",
+                    category: .ime
+                )
                 // Notify UI with actual state
                 self.postUIRefreshNotification()
             }
@@ -328,10 +363,8 @@ final class ImeController: ErrorHandler, IMEControlling {
             
             let actualIME = self.getCurrentInputSource()
             if actualIME != expectedIME {
-                Logger.warning(
-                    "Additional verification: IME mismatch detected (expected: \(expectedIME), actual: \(actualIME))",
-                    category: .ime
-                )
+                Logger.warning("Additional verification: IME mismatch detected",
+                                category: .ime)
                 // Correct the UI state
                 self.postUIRefreshNotification()
             }
@@ -365,7 +398,7 @@ final class ImeController: ErrorHandler, IMEControlling {
                     self.postIMESwitchNotification(expectedIME)
                 }
             } else if newIME == currentIME {
-                Logger.warning("IME switch may have failed: still at \(currentIME)", category: .ime)
+                Logger.warning("IME switch may have failed: still at current IME", category: .ime)
                 // Retry with incremented count
                 if retryCount < 3 {
                     self.retryIMESwitchWithLimit(targetIME: expectedIME, retryCount: retryCount + 1, fromUser: false)
@@ -530,8 +563,9 @@ final class ImeController: ErrorHandler, IMEControlling {
             // Optionally refresh cache to ensure accuracy
             refreshInputSourceCache()
             
-            // Log for debugging but don't force switch
-            // Some apps intentionally change IME and we should respect that
+            // Request UI to refresh to reflect the actual current IME
+            // Do not force switch (some apps intentionally change IME)
+            postUIRefreshNotification()
         } else {
             Logger.debug("IME state verified after app switch: \(actualIME)", category: .ime)
         }

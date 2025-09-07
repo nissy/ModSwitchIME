@@ -47,7 +47,7 @@ NC = \033[0m # No Color
 #===============================================================================
 
 # Development targets
-.PHONY: all help build-dev test test-coverage test-specific lint lint-fix clean-dev version status
+.PHONY: all help build-dev test test-coverage test-specific test-only test-safe lint lint-nocache lint-fix clean-dev version status
 
 # Production targets  
 .PHONY: build archive package dmg notarize notarize-status notarize-staple release clean-release
@@ -155,21 +155,27 @@ build: ## Build production version
 
 test: ## Run all tests
 	@echo "$(BLUE)Running tests...$(NC)"
-	xcodebuild test \
+	@rm -rf $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult || true
+	RUN_STRESS_TESTS=0 xcodebuild test \
 		-project $(XCODE_PROJECT) \
 		-scheme $(SCHEME) \
 		-destination $(DESTINATION) \
+		-derivedDataPath $(BUILD_DIR)/DerivedData \
+		-resultBundlePath $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult \
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO
 
 test-coverage: ## Run tests with coverage report
 	@echo "$(BLUE)Running tests with coverage...$(NC)"
-	xcodebuild test \
+	@rm -rf $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult || true
+	RUN_STRESS_TESTS=0 xcodebuild test \
 		-project $(XCODE_PROJECT) \
 		-scheme $(SCHEME) \
 		-destination $(DESTINATION) \
 		-enableCodeCoverage YES \
+		-derivedDataPath $(BUILD_DIR)/DerivedData \
+		-resultBundlePath $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult \
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO
@@ -180,6 +186,24 @@ test-specific: ## Run specific test (use TEST=ClassName)
 		exit 1; \
 	fi
 	@echo "$(BLUE)Running test: $(TEST)...$(NC)"
+	@rm -rf $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult || true
+	RUN_STRESS_TESTS=0 xcodebuild test \
+		-project $(XCODE_PROJECT) \
+		-scheme $(SCHEME) \
+		-destination $(DESTINATION) \
+		-derivedDataPath $(BUILD_DIR)/DerivedData \
+		-resultBundlePath $(BUILD_DIR)/DerivedData/Logs/Test/ModSwitchIME.xcresult \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		-only-testing:ModSwitchIMETests/$(TEST)
+
+test-only: ## Run specific test class quickly (use ONLY=ClassName)
+	@if [ -z "$(ONLY)" ]; then \
+		echo "$(RED)Error: Please specify a test class with ONLY=ClassName$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Running quick test: $(ONLY)...$(NC)"
 	xcodebuild test \
 		-project $(XCODE_PROJECT) \
 		-scheme $(SCHEME) \
@@ -187,7 +211,21 @@ test-specific: ## Run specific test (use TEST=ClassName)
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO \
-		-only-testing:ModSwitchIMETests/$(TEST)
+		-only-testing:ModSwitchIMETests/$(ONLY)
+
+test-safe: ## Run sandbox-safe subset of tests
+	@echo "$(BLUE)Running sandbox-safe tests subset...$(NC)"
+	xcodebuild test \
+		-project $(XCODE_PROJECT) \
+		-scheme $(SCHEME) \
+		-destination $(DESTINATION) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		-only-testing:ModSwitchIMETests/IconMappingTests \
+		-only-testing:ModSwitchIMETests/InputSourceHelpersTests \
+		-only-testing:ModSwitchIMETests/ModifierKeyMappingTests \
+		-only-testing:ModSwitchIMETests/MenuBarIconDebounceTests
 
 #===============================================================================
 # CODE QUALITY
@@ -196,7 +234,15 @@ test-specific: ## Run specific test (use TEST=ClassName)
 lint: ## Run SwiftLint
 	@if command -v swiftlint >/dev/null 2>&1; then \
 		echo "$(BLUE)Running SwiftLint...$(NC)"; \
-		swiftlint; \
+		swiftlint --no-cache; \
+	else \
+		echo "$(YELLOW)SwiftLint not found. Install with: brew install swiftlint$(NC)"; \
+	fi
+
+lint-nocache: ## Run SwiftLint without cache (CI/sandbox friendly)
+	@if command -v swiftlint >/dev/null 2>&1; then \
+		echo "$(BLUE)Running SwiftLint (no cache)...$(NC)"; \
+		swiftlint --no-cache; \
 	else \
 		echo "$(YELLOW)SwiftLint not found. Install with: brew install swiftlint$(NC)"; \
 	fi

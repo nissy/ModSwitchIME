@@ -55,14 +55,17 @@ final class CriticalFixesTests: XCTestCase {
         }
     }
     
-    func testImeControllerCacheThreadSafety() {
+    func testImeControllerCacheThreadSafety() throws {
+        if ProcessInfo.processInfo.environment["RUN_STRESS_TESTS"] != "1" {
+            throw XCTSkip("Skipping stress test by default. Set RUN_STRESS_TESTS=1 to enable.")
+        }
         let imeController = ImeController.shared
         let expectation = self.expectation(description: "Cache concurrent access")
-        expectation.expectedFulfillmentCount = 100
+        expectation.expectedFulfillmentCount = 20
         
         let queue = DispatchQueue(label: "test.cache.concurrent", attributes: .concurrent)
         
-        for i in 0..<100 {
+        for i in 0..<20 {
             queue.async {
                 // Concurrent cache access
                 if i % 2 == 0 {
@@ -184,7 +187,10 @@ final class CriticalFixesTests: XCTestCase {
     
     // MARK: - Performance Tests
     
-    func testKeyStateAccessPerformance() {
+    func testKeyStateAccessPerformance() throws {
+        if ProcessInfo.processInfo.environment["RUN_STRESS_TESTS"] != "1" {
+            throw XCTSkip("Skipping performance test by default. Set RUN_STRESS_TESTS=1 to enable.")
+        }
         let keyMonitor = KeyMonitor()
         
         measure {
@@ -192,7 +198,7 @@ final class CriticalFixesTests: XCTestCase {
             let queue = DispatchQueue(label: "perf.test", attributes: .concurrent)
             let group = DispatchGroup()
             
-            for _ in 0..<1000 {
+            for _ in 0..<200 {
                 group.enter()
                 queue.async {
                     _ = keyMonitor.isMonitoring

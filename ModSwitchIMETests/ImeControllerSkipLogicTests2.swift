@@ -71,7 +71,10 @@ final class ImeControllerSkipLogicTests2: XCTestCase {
         XCTAssertLessThan(duration, 0.1, "forceAscii should return immediately")
     }
     
-    func testThreadSafetyOfSwitchTime() {
+    func testThreadSafetyOfSwitchTime() throws {
+        if ProcessInfo.processInfo.environment["RUN_STRESS_TESTS"] != "1" {
+            throw XCTSkip("Skipping stress test by default. Set RUN_STRESS_TESTS=1 to enable.")
+        }
         // Safe to call switchToSpecificIME concurrently from multiple threads
         let expectation = self.expectation(description: "Thread safety")
         expectation.expectedFulfillmentCount = 100

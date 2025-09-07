@@ -15,8 +15,8 @@ struct InputSourceManager {
         // 2. Has multiple dots in the identifier indicating hierarchy
         
         let modePatterns = [
-            // Japanese modes
-            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            // Japanese modes (exclude base ".Japanese" which is a parent, not a child mode)
+            ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
             // Chinese modes
             ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
             // Korean modes
@@ -42,7 +42,8 @@ struct InputSourceManager {
         // Try to extract parent ID by removing the last component after the last dot
         // that matches a known mode pattern
         let modePatterns = [
-            ".Japanese", ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
+            // Exclude base ".Japanese" from child mode patterns
+            ".Hiragana", ".Katakana", ".Roman", ".FullWidth", ".HalfWidth",
             ".Simplified", ".Traditional", ".Pinyin", ".Wubi", ".Zhuyin", ".Cangjie",
             ".Hangul", ".Hanja", ".2SetKorean", ".3SetKorean",
             ".ABC", ".QWERTY", ".Dvorak", ".Colemak"

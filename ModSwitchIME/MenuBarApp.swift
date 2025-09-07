@@ -3,12 +3,21 @@ import SwiftUI
 import Cocoa
 import ApplicationServices
 import ServiceManagement
+// Default delay used to debounce icon refresh and wait for TIS state stabilization
+private let defaultIconRefreshDelay: TimeInterval = 0.06
 
 // MARK: - Notification Names
 extension NSNotification.Name {
     static let screenIsLocked = NSNotification.Name("com.apple.screenIsLocked")
     static let screenIsUnlocked = NSNotification.Name("com.apple.screenIsUnlocked")
 }
+
+#if DEBUG
+extension MenuBarApp {
+    static var debugIconUpdateCount: Int = 0
+    static func debugResetIconUpdateCount() { debugIconUpdateCount = 0 }
+}
+#endif
 
 // swiftlint:disable:next type_body_length
 final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
@@ -18,6 +27,10 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     private var aboutWindowController: NSWindowController?
     private var keyMonitor: KeyMonitor?
     private var windowCloseObservers: [NSObjectProtocol] = []
+    // Cache for IME display names to avoid repeated TIS lookups
+    private var imeDisplayNameCache: [String: String] = [:]
+    // Debounced icon refresh work item to avoid flicker and race with TIS
+    private var iconRefreshWorkItem: DispatchWorkItem?
     
     // Shared ImeController instance to avoid duplication
     // Note: This ImeController will also monitor IME changes for cache updates,
@@ -212,6 +225,8 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
                         button.image = nil
                         button.title = "🌐"
                     }
+                    // After enabling (and possibly starting KeyMonitor), refresh with actual IME
+                    self.refreshIconDebounced()
                 } else {
                     if let image = NSImage(
                         systemSymbolName: "globe.badge.chevron.backward",
@@ -552,6 +567,14 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
             name: NSNotification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
             object: nil
         )
+
+        // Invalidate display-name cache when enabled input sources change
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(imeEnabledListChanged),
+            name: NSNotification.Name("com.apple.Carbon.TISNotifyEnabledKeyboardInputSourcesChanged"),
+            object: nil
+        )
         
         // Also monitor our internal IME switch notifications for immediate updates
         NotificationCenter.default.addObserver(
@@ -570,29 +593,33 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
         )
         
         // Initial icon update
-        updateIconWithCurrentIME()
+        refreshIconDebounced()
     }
     
     @objc private func imeStateChanged(_ notification: Notification) {
         Logger.debug("IME state changed notification received", category: .main)
-        updateIconWithCurrentIME()
+        refreshIconDebounced()
+    }
+
+    @objc private func imeEnabledListChanged(_ notification: Notification) {
+        Logger.debug("IME enabled list changed - invalidating display name cache", category: .main)
+        // Ensure thread-safety: mutate cache and update UI on main thread
+        DispatchQueue.main.async { [weak self] in
+            self?.imeDisplayNameCache.removeAll()
+            self?.refreshIconDebounced()
+        }
     }
     
     @objc private func handleInternalIMESwitch(_ notification: Notification) {
         Logger.debug("Internal IME switch notification received", category: .main)
-        // Update icon immediately based on the switched IME
-        if let imeId = notification.userInfo?["imeId"] as? String {
-            updateIconForIME(imeId)
-        } else {
-            // Fallback to current IME check
-            updateIconWithCurrentIME()
-        }
+        // Always refresh based on actual current IME (avoid optimistic UI updates)
+        refreshIconDebounced()
     }
     
     @objc private func handleUIRefreshRequest(_ notification: Notification) {
         Logger.debug("UI refresh request received", category: .main)
         // Always update based on actual current IME state
-        updateIconWithCurrentIME()
+        refreshIconDebounced()
     }
     
     @objc private func systemWillSleep(_ notification: Notification) {
@@ -735,6 +762,8 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
     
     deinit {
         keyMonitor?.stop()
+        // Cancel any pending icon refresh
+        iconRefreshWorkItem?.cancel()
         // Remove all notification observers to prevent memory leaks
         windowCloseObservers.forEach { NotificationCenter.default.removeObserver($0) }
         windowCloseObservers.removeAll()
@@ -747,6 +776,17 @@ final class MenuBarApp: NSObject, ObservableObject, NSApplicationDelegate {
 // MARK: - IME Icon Management Extension
 
 extension MenuBarApp {
+    private func refreshIconDebounced(delay: TimeInterval? = nil) {
+        // Coalesce multiple notifications and wait briefly for TIS state to settle
+        iconRefreshWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.updateIconWithCurrentIME()
+        }
+        iconRefreshWorkItem = item
+        let d = delay ?? defaultIconRefreshDelay
+        DispatchQueue.main.asyncAfter(deadline: .now() + d, execute: item)
+    }
+
     private func updateIconWithCurrentIME() {
         // Ensure UI updates happen on main thread
         DispatchQueue.main.async { [weak self] in
@@ -766,52 +806,45 @@ extension MenuBarApp {
     
     private func updateIconForIME(_ imeId: String) {
         guard let button = statusBarItem?.button else { return }
-        
-        // Determine icon based on IME type
-        let iconInfo = getIconForIME(imeId)
-        let iconName = iconInfo.systemName
-        let fallbackText = iconInfo.emoji
-        let tooltip = iconInfo.title
-        
-        // Update icon
-        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: tooltip) {
-            image.isTemplate = true
-            button.image = image
-            button.imagePosition = .imageOnly
-            button.title = ""
-        } else {
-            // Fallback to text
+        // Determine icon using unified helper (Preferences.getInputSourceIcon)
+        let emoji = Preferences.getInputSourceIcon(imeId) ?? "⌨️"
+        let displayName = getIMEDisplayName(imeId)
+        let tooltip = "\(displayName) (\(imeId))"
+        if emoji != "⌨️" {
             button.image = nil
-            button.title = fallbackText
-        }
-        
-        button.toolTip = tooltip
-        
-        Logger.debug("Updated icon for IME: \(imeId) -> \(iconName)", category: .main)
-    }
-    
-    private struct IconInfo {
-        let systemName: String
-        let emoji: String
-        let title: String
-    }
-    
-    private func getIconForIME(_ imeId: String) -> IconInfo {
-        // Determine icon based on IME ID
-        if imeId.contains("ABC") || imeId.contains("US") {
-            return IconInfo(systemName: "globe", emoji: "🌐", title: "ModSwitchIME - English (\(imeId))")
-        } else if imeId.contains("Japanese") || imeId.contains("Hiragana") {
-            return IconInfo(systemName: "globe.asia.australia", emoji: "🇯🇵", title: "ModSwitchIME - Japanese (\(imeId))")
-        } else if imeId.contains("Korean") {
-            return IconInfo(systemName: "globe.asia.australia", emoji: "🇰🇷", title: "ModSwitchIME - Korean (\(imeId))")
-        } else if imeId.contains("Chinese") || imeId.contains("Pinyin") || 
-                  imeId.contains("Simplified") || imeId.contains("Traditional") {
-            return IconInfo(systemName: "globe.asia.australia", emoji: "🇨🇳", title: "ModSwitchIME - Chinese (\(imeId))")
+            button.title = emoji
         } else {
-            // Generic non-English IME
-            return IconInfo(systemName: "globe.central.south.asia", emoji: "🌏", title: "ModSwitchIME - IME (\(imeId))")
+            if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: tooltip) {
+                image.isTemplate = true
+                button.image = image
+                button.imagePosition = .imageOnly
+                button.title = ""
+            } else {
+                button.image = nil
+                button.title = "🌐"
+            }
         }
+        button.toolTip = tooltip
+        Logger.debug("Updated icon for IME (unified): \(imeId) -> \(emoji)", category: .main)
+#if DEBUG
+        Self.debugIconUpdateCount += 1
+#endif
     }
+
+    private func getIMEDisplayName(_ imeId: String) -> String {
+        if let cached = imeDisplayNameCache[imeId] { return cached }
+        let sources = Preferences.getAllInputSources(includeDisabled: false)
+        if let source = sources.first(where: { $0.sourceId == imeId }) {
+            imeDisplayNameCache[imeId] = source.localizedName
+            return source.localizedName
+        }
+        let language = InputSourceManager.getInputSourceLanguage(imeId)
+        let name = language.isEmpty ? imeId : language
+        imeDisplayNameCache[imeId] = name
+        return name
+    }
+    
+    // getIconForIME/IconInfo removed in favor of Preferences.getInputSourceIcon
 }
 
 // MARK: - NSMenuDelegate

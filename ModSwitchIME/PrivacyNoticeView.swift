@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct PrivacyNoticeView: View {
+struct AboutPrivacyNoticeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Privacy & Security Notice")
@@ -8,32 +8,32 @@ struct PrivacyNoticeView: View {
                 .foregroundColor(.primary)
             
             VStack(alignment: .leading, spacing: 8) {
-                PrivacyPoint(
+                AboutPrivacyPoint(
                     icon: "🔒",
                     title: "Local Processing Only",
                     description: "All IME switching happens locally. No data sent to external servers."
                 )
                 
-                PrivacyPoint(
+                AboutPrivacyPoint(
                     icon: "⌨️",
                     title: "Key Detection Only",
                     description: """Detects key presses to distinguish shortcuts from single modifier keys. 
 No text content captured."""
                 )
                 
-                PrivacyPoint(
+                AboutPrivacyPoint(
                     icon: "🚫",
                     title: "No Data Collection",
                     description: "Your keystrokes, text, or personal data are never stored, logged, or transmitted."
                 )
                 
-                PrivacyPoint(
+                AboutPrivacyPoint(
                     icon: "🔧",
                     title: "Open Source",
                     description: "Source code is publicly available for security review and transparency."
                 )
                 
-                PrivacyPoint(
+                AboutPrivacyPoint(
                     icon: "⚙️",
                     title: "Revocable Access",
                     description: "Accessibility permission can be revoked anytime in System Settings."
@@ -57,7 +57,7 @@ No text content captured."""
     }
 }
 
-struct PrivacyPoint: View {
+struct AboutPrivacyPoint: View {
     let icon: String
     let title: String
     let description: String
@@ -85,6 +85,6 @@ struct PrivacyPoint: View {
 }
 
 #Preview {
-    PrivacyNoticeView()
+    AboutPrivacyNoticeView()
         .frame(width: 350)
 }
