@@ -806,26 +806,21 @@ extension MenuBarApp {
     
     private func updateIconForIME(_ imeId: String) {
         guard let button = statusBarItem?.button else { return }
-        // Determine icon using unified helper (Preferences.getInputSourceIcon)
-        let emoji = Preferences.getInputSourceIcon(imeId) ?? "⌨️"
         let displayName = getIMEDisplayName(imeId)
         let tooltip = "\(displayName) (\(imeId))"
-        if emoji != "⌨️" {
-            button.image = nil
-            button.title = emoji
+        // Always use SF Symbol globe for the menu bar icon.
+        if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: tooltip) {
+            image.isTemplate = true
+            button.image = image
+            button.imagePosition = .imageOnly
+            button.title = ""
         } else {
-            if let image = NSImage(systemSymbolName: "globe", accessibilityDescription: tooltip) {
-                image.isTemplate = true
-                button.image = image
-                button.imagePosition = .imageOnly
-                button.title = ""
-            } else {
-                button.image = nil
-                button.title = "🌐"
-            }
+            // Fallback when SF Symbols are unavailable
+            button.image = nil
+            button.title = "🌐"
         }
         button.toolTip = tooltip
-        Logger.debug("Updated icon for IME (unified): \(imeId) -> \(emoji)", category: .main)
+        Logger.debug("Updated icon for IME: \(imeId) using globe", category: .main)
 #if DEBUG
         Self.debugIconUpdateCount += 1
 #endif

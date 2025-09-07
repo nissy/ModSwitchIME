@@ -231,15 +231,16 @@ final class ImeController: ErrorHandler, IMEControlling {
     private func chooseAlternateIME(for target: String) -> String? {
         var cache: [String: TISInputSource] = [:]
         cacheQueue.sync { cache = inputSourceCache }
-        let english = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"].filter { cache[$0] != nil }
-        if english.isEmpty { return nil }
+        let englishCandidates = ["com.apple.keylayout.ABC", "com.apple.keylayout.US"]
+        let available = englishCandidates.filter { cache[$0] != nil }
+        guard !available.isEmpty else { return nil }
         if target == "com.apple.keylayout.ABC" {
-            return english.first(where: { $0 == "com.apple.keylayout.US" }) ?? english.first
+            return available.first { $0 == "com.apple.keylayout.US" }?? available.first
         }
         if target == "com.apple.keylayout.US" {
-            return english.first(where: { $0 == "com.apple.keylayout.ABC" }) ?? english.first
+            return available.first { $0 == "com.apple.keylayout.ABC" }?? available.first
         }
-        return english.first
+        return available.first
     }
     
     func selectInputSource(_ inputSourceID: String) throws {
@@ -252,78 +253,59 @@ final class ImeController: ErrorHandler, IMEControlling {
         let currentIME = getCurrentInputSource()
         Logger.debug("Switching IME: \(currentIME) -> \(inputSourceID)", category: .ime)
         
-        // Thread-safe cache read
-        var cachedSource: TISInputSource?
-        cacheQueue.sync {
-            cachedSource = inputSourceCache[inputSourceID]
+        // Resolve input source from cache, optionally refreshing
+        if let (source, refreshed) = getInputSourceFromCacheOrRefresh(inputSourceID) {
+            try selectWithRetries(source: source,
+                                  expectedIME: inputSourceID,
+                                  currentIME: currentIME,
+                                  refreshed: refreshed)
+            return
         }
-        
-        // Try with cached source first
-        if let source = cachedSource {
-            // Retry mechanism with exponential backoff
-            var lastError: Error?
-            for attempt in 0..<3 {
-                let result = TISSelectInputSource(source)
-                if result == noErr {
-                    // Hybrid approach: verify actual switch before notifying
-                    performHybridIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
-                    // Track successful switch request
-                    setLastSwitchedIME(inputSourceID)
-                    return
-                }
-                
-                // Failed - wait before retry with exponential backoff
-                lastError = ModSwitchIMEError.inputMethodSwitchFailed(
-                    "TISSelectInputSource failed with code: \(result)"
-                )
-                Logger.warning("IME switch attempt \(attempt + 1) failed with code: \(result)", category: .ime)
-                
-                if attempt < 2 {
-                    let delay = Double(attempt + 1) * 0.1 // 0.1s, 0.2s
-                    Thread.sleep(forTimeInterval: delay)
-                }
-            }
-            
-            // All retries failed
-            throw lastError ?? ModSwitchIMEError.inputMethodSwitchFailed("Unknown error")
-        }
-        
-        // Source not in cache - refresh and retry
-        Logger.warning("IME not found in cache, refreshing: \(inputSourceID)", category: .ime)
-        
-        // Refresh cache synchronously
-        refreshCacheSync()
-        
-        // Try again with refreshed cache
-        cacheQueue.sync {
-            cachedSource = inputSourceCache[inputSourceID]
-        }
-        
-        if let source = cachedSource {
-            // Retry with fresh source
-            for attempt in 0..<3 {
-                let result = TISSelectInputSource(source)
-                if result == noErr {
-                    // Hybrid approach: verify actual switch before notifying
-                    performHybridIMESwitch(expectedIME: inputSourceID, currentIME: currentIME)
-                    // Track successful switch request
-                    setLastSwitchedIME(inputSourceID)
-                    return
-                }
-                
-                Logger.warning(
-                    "IME switch with fresh source attempt \(attempt + 1) failed",
-                    category: .ime
-                )
-                if attempt < 2 {
-                    Thread.sleep(forTimeInterval: 0.1)
-                }
-            }
-            
-            throw ModSwitchIMEError.inputMethodSwitchFailed("Failed after cache refresh")
-        }
-        
         throw ModSwitchIMEError.inputSourceNotFound(inputSourceID)
+    }
+
+    // Resolve input source from cache; if missing, refresh synchronously and retry lookup.
+    private func getInputSourceFromCacheOrRefresh(_ id: String) -> (TISInputSource, Bool)? {
+        var cached: TISInputSource?
+        cacheQueue.sync { cached = inputSourceCache[id] }
+        if let s = cached {
+            return (s, false)
+        }
+        Logger.warning("IME not found in cache, refreshing: \(id)", category: .ime)
+        refreshCacheSync()
+        cacheQueue.sync { cached = inputSourceCache[id] }
+        if let s = cached {
+            return (s, true)
+        }
+        return nil
+    }
+
+    // Try selecting the given source up to 3 times with small backoff.
+    private func selectWithRetries(
+        source: TISInputSource,
+        expectedIME: String,
+        currentIME: String,
+        refreshed: Bool
+    ) throws {
+        var lastError: Error?
+        for attempt in 0..<3 {
+            let result = TISSelectInputSource(source)
+            if result == noErr {
+                performHybridIMESwitch(expectedIME: expectedIME, currentIME: currentIME)
+                setLastSwitchedIME(expectedIME)
+                return
+            }
+            lastError = ModSwitchIMEError.inputMethodSwitchFailed(
+                "TISSelectInputSource failed with code: \(result)"
+            )
+            let ctx = refreshed ? "fresh source" : "cached source"
+            Logger.warning("IME switch (\(ctx)) attempt \(attempt + 1) failed with code: \(result)", category: .ime)
+            if attempt < 2 {
+                let delay = Double(attempt + 1) * 0.1
+                Thread.sleep(forTimeInterval: delay)
+            }
+        }
+        throw lastError ?? ModSwitchIMEError.inputMethodSwitchFailed("Unknown error")
     }
     
     private func performHybridIMESwitch(expectedIME: String, currentIME: String) {
