@@ -235,10 +235,10 @@ final class ImeController: ErrorHandler, IMEControlling {
         let available = englishCandidates.filter { cache[$0] != nil }
         guard !available.isEmpty else { return nil }
         if target == "com.apple.keylayout.ABC" {
-            return available.first { $0 == "com.apple.keylayout.US" }?? available.first
+            return available.first { $0 == "com.apple.keylayout.US" } ?? available.first
         }
         if target == "com.apple.keylayout.US" {
-            return available.first { $0 == "com.apple.keylayout.ABC" }?? available.first
+            return available.first { $0 == "com.apple.keylayout.ABC" } ?? available.first
         }
         return available.first
     }
