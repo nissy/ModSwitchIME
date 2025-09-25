@@ -33,12 +33,19 @@ final class ImeController: ErrorHandler, IMEControlling {
     private var lastSwitchedIME: String?
     private let lastSwitchedIMEQueue = DispatchQueue(label: "com.modswitchime.lastIME")
     
-    // Track last switch time for chattering prevention
-    private var lastSwitchTime: CFAbsoluteTime = 0
-    private let switchTimeQueue = DispatchQueue(label: "com.modswitchime.switchtime", attributes: .concurrent)
-    
-    // Removed throttling - redundant with getCurrentInputSource() check
-    
+    // Track last switch timings separately for user-triggered and internal operations
+    private struct SwitchThrottleState {
+        var lastUserTarget: String = ""
+        var lastUserRequestTime: CFAbsoluteTime = 0
+        var lastInternalTarget: String = ""
+        var lastInternalRequestTime: CFAbsoluteTime = 0
+    }
+    private var switchThrottleState = SwitchThrottleState()
+    private let switchThrottleQueue = DispatchQueue(label: "com.modswitchime.switchthrottle", attributes: .concurrent)
+    private let userThrottleInterval: CFAbsoluteTime = 0.1
+    private let internalThrottleInterval: CFAbsoluteTime = 0.05
+    // Throttle state balances rapid duplicate prevention with user retry needs
+
     private init() {
         // Initialize cache on startup for immediate availability
         initializeCache()
@@ -146,31 +153,43 @@ final class ImeController: ErrorHandler, IMEControlling {
         let now = CFAbsoluteTimeGetCurrent()
         
         if fromUser {
-            // User operation
-            // Prevent rapid switching for same IME only (chattering prevention)
-            let lastTime = switchTimeQueue.sync { lastSwitchTime }
-            if currentIME == imeId && (now - lastTime) < 0.1 {
-                Logger.debug("Skipping rapid duplicate switch (chattering prevention)", category: .ime)
-                // Ensure UI reflects the current state even when we skip
+            var shouldSkip = false
+            switchThrottleQueue.sync {
+                shouldSkip = switchThrottleState.lastUserTarget == imeId &&
+                    (now - switchThrottleState.lastUserRequestTime) < userThrottleInterval
+            }
+
+            if shouldSkip {
+                Logger.debug("Skipping rapid duplicate user switch: \(imeId)", category: .ime)
                 postUIRefreshNotification()
                 return
             }
-            // No alternate/fallback selection: selecting a different IME temporarily
-            // caused unintended final states in rapid sequences. We only re-select
-            // the requested IME (even if it matches current) and refresh UI.
         } else {
-            // Internal operation
-            // Skip if already on target IME (performance optimization)
+            var shouldSkip = false
             if currentIME == imeId {
                 Logger.debug("Already on target IME (internal): \(imeId)", category: .ime)
                 return
             }
+
+            switchThrottleQueue.sync {
+                shouldSkip = switchThrottleState.lastInternalTarget == imeId &&
+                    (now - switchThrottleState.lastInternalRequestTime) < internalThrottleInterval
+            }
+
+            if shouldSkip {
+                Logger.debug("Skipping throttled internal switch: \(imeId)", category: .ime)
+                return
+            }
         }
-        
-        // Record switch time synchronously to ensure consistency
-        // Using barrier for exclusive write access
-        switchTimeQueue.sync(flags: .barrier) {
-            self.lastSwitchTime = now
+
+        switchThrottleQueue.async(flags: .barrier) {
+            if fromUser {
+                self.switchThrottleState.lastUserTarget = imeId
+                self.switchThrottleState.lastUserRequestTime = now
+            } else {
+                self.switchThrottleState.lastInternalTarget = imeId
+                self.switchThrottleState.lastInternalRequestTime = now
+            }
         }
         
         // Execute IME switch

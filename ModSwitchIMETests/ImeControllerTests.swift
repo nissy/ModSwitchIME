@@ -8,67 +8,58 @@ var mockTISSelectInputSourceCallCount = 0
 var mockCurrentInputSource = "com.apple.keylayout.ABC"
 
 class MockableImeController: IMEControlling {
+    private struct ThrottleState {
+        var lastUserTarget: String = ""
+        var lastUserRequestTime: CFAbsoluteTime = 0
+    }
+
     private let throttleInterval: TimeInterval = 0.05 // 50ms throttle
-    private var lastSwitchTime: CFAbsoluteTime = 0
-    private var lastSwitchIME: String = ""
+    private var throttleState = ThrottleState()
     private let throttleQueue = DispatchQueue(label: "test.throttle.queue")
     
     func switchToSpecificIME(_ targetIMEId: String) {
         let now = CFAbsoluteTimeGetCurrent()
-        let currentIME = getCurrentInputSource()
         
-        // Skip if already on target IME
-        if currentIME == targetIMEId {
+        // Thread-safe throttling check: skip only when identical request occurs within interval
+        var shouldSkip = false
+        throttleQueue.sync {
+            let timeSinceLastUserRequest = now - throttleState.lastUserRequestTime
+            if throttleState.lastUserTarget == targetIMEId && timeSinceLastUserRequest < throttleInterval {
+                shouldSkip = true
+            }
+        }
+
+        if shouldSkip {
             return
         }
-        
-        // Thread-safe throttling check (matching real implementation)
-        var shouldSwitch = false
+
         throttleQueue.sync {
-            let timeSinceLastSwitch = now - lastSwitchTime
-            
-            // Skip if same IME requested within throttle interval
-            // Changed to check against actual current IME instead of internal state
-            if currentIME == targetIMEId && timeSinceLastSwitch < throttleInterval {
-                return
-            }
-            
-            // Skip if any switch happened within throttle interval (except first switch)
-            if lastSwitchTime > 0 && timeSinceLastSwitch < throttleInterval {
-                return
-            }
-            
-            // Update throttle state
-            lastSwitchTime = now
-            lastSwitchIME = targetIMEId
-            shouldSwitch = true
+            throttleState.lastUserTarget = targetIMEId
+            throttleState.lastUserRequestTime = now
         }
-        
-        // Only execute if throttle check passed
-        if shouldSwitch {
-            // For testing, we'll simulate the behavior
-            mockTISSelectInputSourceCallCount += 1
-            mockCurrentInputSource = targetIMEId // Simulate successful switch
-            
+
+        // Execute switch operation
+        mockTISSelectInputSourceCallCount += 1
+        mockCurrentInputSource = targetIMEId // Simulate successful switch
+
+        if mockTISSelectInputSourceResult != noErr {
+            // Simulate retry mechanism
+            for attempt in 0..<3 {
+                if mockTISSelectInputSourceResult == noErr {
+                    break
+                }
+                Thread.sleep(forTimeInterval: 0.01) // Shorter delay for tests
+            }
+
             if mockTISSelectInputSourceResult != noErr {
-                // Simulate retry mechanism
-                for attempt in 0..<3 {
-                    if mockTISSelectInputSourceResult == noErr {
-                        break
-                    }
-                    Thread.sleep(forTimeInterval: 0.01) // Shorter delay for tests
-                }
-                
-                if mockTISSelectInputSourceResult != noErr {
-                    // In real implementation, this would throw
-                    // For mock, we just return
-                    return
-                }
+                // In real implementation, this would throw
+                // For mock, we just return
+                return
             }
-            
-            // Simulate successful switch
-            mockCurrentInputSource = targetIMEId
         }
+
+        // Simulate successful switch
+        mockCurrentInputSource = targetIMEId
     }
     
     func getCurrentInputSource() -> String {
@@ -395,12 +386,12 @@ class ImeControllerTests: XCTestCase {
             mockableController.switchToSpecificIME(targetIME)
         }
         
-        // Should still be 1 (already on target IME, so skipped)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Requests to current IME should be skipped")
+        // Should still be 1 (duplicate target requests are throttled)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Duplicate target requests should be throttled")
         
-        // Try switching to a different IME within throttle window - should still be throttled
+        // Switching to a different IME within throttle window should be allowed
         mockableController.switchToSpecificIME(differentIME)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Different IME within throttle window should be throttled")
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Different IME should bypass target-specific throttle")
         
         // Wait for throttle interval to pass
         Thread.sleep(forTimeInterval: 0.06) // 60ms > 50ms throttle interval
@@ -408,8 +399,8 @@ class ImeControllerTests: XCTestCase {
         // Next request to different IME should execute
         mockableController.switchToSpecificIME(differentIME)
         XCTAssertEqual(
-            mockTISSelectInputSourceCallCount, 2,
-            "Request to different IME after throttle interval should execute"
+            mockTISSelectInputSourceCallCount, 3,
+            "Request after throttle interval should execute as usual"
         )
     }
     
@@ -426,17 +417,17 @@ class ImeControllerTests: XCTestCase {
         mockableController.switchToSpecificIME(ime1)
         XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "First request should execute")
         
-        // Different IME within throttle window - should be throttled
+        // Different IME within throttle window - should execute immediately
         Thread.sleep(forTimeInterval: 0.02) // 20ms < 50ms throttle
         mockableController.switchToSpecificIME(ime2)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, "Different IME within throttle window should be throttled")
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Different IME should not be throttled")
         
-        // Wait for throttle interval
-        Thread.sleep(forTimeInterval: 0.04) // Total 60ms > 50ms
+        // Wait long enough to exceed throttle interval comfortably
+        Thread.sleep(forTimeInterval: 0.08) // Total ~100ms > 50ms
         
-        // Now it should execute
+        // Additional call after throttle window still executes
         mockableController.switchToSpecificIME(ime2)
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2, "Different IME after throttle interval should execute")
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 3, "Repeated requests after interval should execute")
         XCTAssertEqual(mockableController.getCurrentInputSource(), ime2, "Should switch to second IME")
     }
     
@@ -479,9 +470,27 @@ class ImeControllerTests: XCTestCase {
         // When: User tries to switch to the same IME
         mockableController.switchToSpecificIME(targetIME)
         
-        // Then: Should skip the switch since we're already on target IME
-        // Note: This requires implementation change to check actual IME first
-        XCTAssertEqual(mockTISSelectInputSourceCallCount, 0, 
-                      "Should not switch when already on target IME")
+        // Then: Should still issue a switch request so users can recover from mismatched states
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1, 
+                      "Should reissue request even when system reports target IME")
+    }
+
+    func testUserCanResendSameIMEAfterThrottleWindow() {
+        let targetIME = "com.apple.keylayout.Japanese"
+
+        mockTISSelectInputSourceCallCount = 0
+        mockCurrentInputSource = targetIME
+
+        // First request executes
+        mockableController.switchToSpecificIME(targetIME)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 1)
+
+        // Wait for throttle interval to expire
+        Thread.sleep(forTimeInterval: 0.06)
+
+        // Same IME request after interval should execute again
+        mockableController.switchToSpecificIME(targetIME)
+        XCTAssertEqual(mockTISSelectInputSourceCallCount, 2,
+                       "Same IME should execute again after throttle window")
     }
 }
