@@ -97,20 +97,46 @@ final class ImeControllerSkipLogicTests2: XCTestCase {
     func testChatteringPreventionTiming() {
         // Verify chattering prevention works precisely at 100ms
         let targetIME = "com.apple.keylayout.ABC"
-        
+
         // First call
         controller.switchToSpecificIME(targetIME, fromUser: true)
-        
+
         // Wait 90ms (should still be blocked)
         Thread.sleep(forTimeInterval: 0.09)
         controller.switchToSpecificIME(targetIME, fromUser: true)
         // This call is blocked
-        
+
         // Wait another 20ms (total 110ms)
         Thread.sleep(forTimeInterval: 0.02)
         controller.switchToSpecificIME(targetIME, fromUser: true)
         // This call goes through
-        
+
         XCTAssertTrue(true, "Chattering prevention should work with 100ms threshold")
+    }
+
+    func testDuplicateUserSwitchPostsRefreshNotification() {
+        let targetIME = "com.apple.keylayout.ABC"
+        let refreshExpectation = expectation(description: "Duplicate user switch triggers UI refresh")
+        var secondCallStarted = false
+
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ModSwitchIME.shouldRefreshUI"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            if secondCallStarted {
+                refreshExpectation.fulfill()
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        controller.switchToSpecificIME(targetIME, fromUser: true)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            secondCallStarted = true
+            self.controller.switchToSpecificIME(targetIME, fromUser: true)
+        }
+
+        wait(for: [refreshExpectation], timeout: 1.0)
     }
 }
